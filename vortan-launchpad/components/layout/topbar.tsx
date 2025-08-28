@@ -1,0 +1,119 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Wallet, Wifi, Loader2 } from "lucide-react";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { useWallet } from "@/lib/web3/contexts/wallet-context";
+
+export function Topbar() {
+  const { isConnected, address, chainName, isCorrectNetwork, isLoading } =
+    useWallet();
+
+  return (
+    <header className="fixed top-0 right-0 left-0 z-30 h-16 glass-effect border-b border-border">
+      <div className="flex h-full items-center justify-between px-6">
+        <div className="flex items-center space-x-4">
+          <h1 className="font-heading text-2xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+            Space Station Dashboard
+          </h1>
+        </div>
+
+        <div className="flex items-center space-x-4">
+          {/* Network Indicator */}
+          <div className="flex items-center space-x-2">
+            <Wifi className="h-4 w-4 text-secondary" />
+            <Badge
+              variant={isCorrectNetwork ? "secondary" : "destructive"}
+              className={`${
+                isCorrectNetwork
+                  ? "bg-secondary/20 text-secondary border-secondary/30"
+                  : "bg-destructive/20 text-destructive border-destructive/30"
+              }`}
+            >
+              {isLoading ? (
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              ) : null}
+              {chainName}
+            </Badge>
+          </div>
+
+          {/* Wallet Connect - Using RainbowKit's ConnectButton */}
+          <ConnectButton.Custom>
+            {({
+              account,
+              chain,
+              openAccountModal,
+              openChainModal,
+              openConnectModal,
+              mounted,
+            }) => {
+              const ready = mounted;
+              const connected = ready && account && chain;
+
+              return (
+                <div>
+                  {(() => {
+                    if (!ready) {
+                      return (
+                        <Button className="bg-gradient-to-r from-primary to-secondary hover:from-primary/80 hover:to-secondary/80 transition-all duration-300 animate-glow">
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Loading...
+                        </Button>
+                      );
+                    }
+
+                    if (!connected) {
+                      return (
+                        <Button
+                          onClick={openConnectModal}
+                          className="bg-gradient-to-r from-primary to-secondary hover:from-primary/80 hover:to-secondary/80 transition-all duration-300 animate-glow"
+                        >
+                          <Wallet className="h-4 w-4 mr-2" />
+                          Connect Wallet
+                        </Button>
+                      );
+                    }
+
+                    if (chain.unsupported) {
+                      return (
+                        <Button
+                          onClick={openChainModal}
+                          variant="destructive"
+                          className="animate-pulse"
+                        >
+                          Wrong network
+                        </Button>
+                      );
+                    }
+
+                    return (
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          onClick={openChainModal}
+                          variant="outline"
+                          size="sm"
+                          className="text-xs"
+                        >
+                          {chain.name}
+                        </Button>
+
+                        <Button
+                          onClick={openAccountModal}
+                          className="bg-gradient-to-r from-primary to-secondary hover:from-primary/80 hover:to-secondary/80 transition-all duration-300"
+                        >
+                          <Wallet className="h-4 w-4 mr-2" />
+                          {account.displayName}
+                        </Button>
+                      </div>
+                    );
+                  })()}
+                </div>
+              );
+            }}
+          </ConnectButton.Custom>
+        </div>
+      </div>
+    </header>
+  );
+}

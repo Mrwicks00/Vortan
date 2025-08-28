@@ -1,0 +1,93 @@
+import { NextResponse } from "next/server"
+
+// Mock project data as specified in the requirements
+const mockProjects = [
+  {
+    saleAddress: "0xSale1",
+    name: "Andromeda Quest",
+    symbol: "ANDQ",
+    bannerUrl: "/futuristic-space-game-banner-with-nebula.png",
+    logoUrl: "/circular-space-game-logo-with-planet.png",
+    description: "AI-powered MMO set in the Andromeda galaxy with procedural worlds.",
+    website: "https://andromeda.example",
+    socials: {
+      x: "https://x.com/andromeda",
+      discord: "https://discord.gg/andromeda",
+      medium: "https://medium.com/@andromeda",
+    },
+    baseToken: "USDC",
+    priceDisplay: "50 ANDQ per 1 USDC",
+    status: "Live",
+    start: 1724505600,
+    end: 1724725200,
+    hardCap: "200,000 USDC",
+    raisedPct: 63,
+  },
+  {
+    saleAddress: "0xSale2",
+    name: "Stellar Mining Corp",
+    symbol: "SMC",
+    bannerUrl: "/space-mining-operation-with-asteroids.png",
+    logoUrl: "/mining-company-logo-with-pickaxe-and-star.png",
+    description: "Decentralized asteroid mining protocol for rare earth elements.",
+    website: "https://stellarmining.example",
+    socials: {
+      x: "https://x.com/stellarmining",
+      discord: "https://discord.gg/stellarmining",
+      medium: "https://medium.com/@stellarmining",
+    },
+    baseToken: "SOMI",
+    priceDisplay: "25 SMC per 1 SOMI",
+    status: "Upcoming",
+    start: 1724811600,
+    end: 1725031200,
+    hardCap: "150,000 SOMI",
+    raisedPct: 0,
+  },
+  {
+    saleAddress: "0xSale3",
+    name: "Quantum Bridge",
+    symbol: "QBR",
+    bannerUrl: "/quantum-technology-bridge-in-space.png",
+    logoUrl: "/quantum-bridge-logo-with-connected-nodes.png",
+    description: "Cross-dimensional bridge protocol for multi-verse transactions.",
+    website: "https://quantumbridge.example",
+    socials: {
+      x: "https://x.com/quantumbridge",
+      discord: "https://discord.gg/quantumbridge",
+      medium: "https://medium.com/@quantumbridge",
+    },
+    baseToken: "USDC",
+    priceDisplay: "100 QBR per 1 USDC",
+    status: "Ended",
+    start: 1724199200,
+    end: 1724418800,
+    hardCap: "300,000 USDC",
+    raisedPct: 100,
+  },
+  {
+    saleAddress: "0xSale4",
+    name: "Nebula Network",
+    symbol: "NEB",
+    bannerUrl: "/colorful-nebula-network-with-data-streams.png",
+    logoUrl: "/nebula-network-logo-with-swirling-galaxy.png",
+    description: "Decentralized cloud computing network powered by cosmic energy.",
+    website: "https://nebulanetwork.example",
+    socials: {
+      x: "https://x.com/nebulanetwork",
+      discord: "https://discord.gg/nebulanetwork",
+      medium: "https://medium.com/@nebulanetwork",
+    },
+    baseToken: "SOMI",
+    priceDisplay: "75 NEB per 1 SOMI",
+    status: "Live",
+    start: 1724592000,
+    end: 1724811600,
+    hardCap: "250,000 SOMI",
+    raisedPct: 42,
+  },
+]
+
+export async function GET() {
+  return NextResponse.json(mockProjects)
+}

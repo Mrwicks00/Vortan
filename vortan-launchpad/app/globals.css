@@ -1,0 +1,194 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Updated to space theme colors from design brief */
+  --background: #0b0e17; /* Deep Space background */
+  --foreground: #e0e0e0; /* Light gray text */
+  --card: #1a1d25; /* Slightly lighter background for cards */
+  --card-foreground: #e0e0e0; /* Text on cards */
+  --popover: rgba(26, 29, 37, 0.95); /* Semi-transparent for popups */
+  --popover-foreground: #e0e0e0; /* Text in popups */
+  --primary: #9d4edd; /* Electric Purple for interactive elements */
+  --primary-foreground: #ffffff; /* Text on primary buttons */
+  --secondary: #00e5ff; /* Neon Cyan for accents */
+  --secondary-foreground: #0b0e17; /* Text on secondary elements */
+  --muted: #475569; /* Muted color for less important text */
+  --muted-foreground: #94a3b8; /* Lighter muted text */
+  --accent: #ffd54f; /* Solar Gold for highlights */
+  --accent-foreground: #0b0e17; /* Text on accent elements */
+  --destructive: #ff4c4c; /* Red for error states */
+  --destructive-foreground: #ffffff; /* Text on destructive actions */
+  --border: rgba(255, 255, 255, 0.1); /* Subtle glowing borders */
+  --input: rgba(255, 255, 255, 0.05); /* Input backgrounds */
+  --ring: rgba(157, 78, 221, 0.5); /* Purple glowing ring effect */
+  --chart-1: #9d4edd; /* Electric Purple */
+  --chart-2: #00e5ff; /* Neon Cyan */
+  --chart-3: #ffd54f; /* Solar Gold */
+  --chart-4: #ff6b6b; /* Coral */
+  --chart-5: #4ecdc4; /* Teal */
+  --radius: 0.5rem; /* Rounded corners for cards */
+  --sidebar: rgba(11, 14, 23, 0.8); /* Sidebar background */
+  --sidebar-foreground: #e0e0e0; /* Sidebar text */
+  --sidebar-primary: #9d4edd; /* Primary sidebar color */
+  --sidebar-primary-foreground: #ffffff; /* Text in primary sidebar */
+  --sidebar-accent: #00e5ff; /* Sidebar accent color */
+  --sidebar-accent-foreground: #0b0e17; /* Text for sidebar accents */
+  --sidebar-border: rgba(255, 255, 255, 0.1); /* Sidebar border */
+  --sidebar-ring: rgba(157, 78, 221, 0.5); /* Sidebar glowing effect */
+}
+
+.dark {
+  /* Dark mode uses same space theme colors */
+  --background: #0b0e17;
+  --foreground: #e0e0e0;
+  --card: #1a1d25;
+  --card-foreground: #e0e0e0;
+  --popover: rgba(26, 29, 37, 0.95);
+  --popover-foreground: #e0e0e0;
+  --primary: #9d4edd;
+  --primary-foreground: #ffffff;
+  --secondary: #00e5ff;
+  --secondary-foreground: #0b0e17;
+  --muted: #475569;
+  --muted-foreground: #94a3b8;
+  --accent: #ffd54f;
+  --accent-foreground: #0b0e17;
+  --destructive: #ff4c4c;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.05);
+  --ring: rgba(157, 78, 221, 0.5);
+  --chart-1: #9d4edd;
+  --chart-2: #00e5ff;
+  --chart-3: #ffd54f;
+  --chart-4: #ff6b6b;
+  --chart-5: #4ecdc4;
+  --sidebar: rgba(11, 14, 23, 0.8);
+  --sidebar-foreground: #e0e0e0;
+  --sidebar-primary: #9d4edd;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #00e5ff;
+  --sidebar-accent-foreground: #0b0e17;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: rgba(157, 78, 221, 0.5);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  /* Added space theme font families */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-heading: "Orbitron", "Exo", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    /* Removed dim starfield background and replaced with space background image */
+    background-image: url("/space-nebula-background.png");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+  }
+
+  /* Added heading font class */
+  .font-heading {
+    font-family: var(--font-heading);
+  }
+
+  /* Added glowing border utility */
+  .glow-border {
+    border: 1px solid transparent;
+    background: linear-gradient(var(--card), var(--card)) padding-box,
+      linear-gradient(45deg, var(--primary), var(--secondary)) border-box;
+  }
+
+  /* Added glass effect utility */
+  .glass-effect {
+    backdrop-filter: blur(10px);
+    background: rgba(26, 29, 37, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  /* Added page-specific background classes */
+  .bg-home {
+    background-image: url("/space-station-interior.png");
+  }
+
+  .bg-projects {
+    background-image: url("/deep-space-galaxy.png");
+  }
+
+  .bg-staking {
+    background-image: url("/cosmic-energy-field.png");
+  }
+
+  .bg-analytics {
+    background-image: url("/data-constellation.png");
+  }
+
+  .bg-admin {
+    background-image: url("/command-center.png");
+  }
+
+  .bg-governance {
+    background-image: url("/council-chamber.png");
+  }
+}
+
+/* Added glow animation for interactive elements */
+@keyframes glow {
+  0%,
+  100% {
+    box-shadow: 0 0 5px rgba(157, 78, 221, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(157, 78, 221, 0.8), 0 0 30px rgba(0, 229, 255, 0.4);
+  }
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
