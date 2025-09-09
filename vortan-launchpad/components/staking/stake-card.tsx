@@ -146,6 +146,7 @@ export function StakeCard({
 
   const handleApprove = async (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!amount || !onApprove) return;
 
     try {
@@ -179,6 +180,7 @@ export function StakeCard({
 
   const handleStake = async (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (amount && lockPeriod && onStake) {
       setIsLoading(true);
       try {
@@ -235,7 +237,7 @@ export function StakeCard({
     }
   };
 
-  const handleClaim = () => {
+  const handleClaim = async () => {
     if (onClaim) {
       setIsLoading(true);
       try {
@@ -335,6 +337,7 @@ export function StakeCard({
             {/* Approve Button - Always visible when not approved */}
             {!isApproved && (
               <Button
+                type="button"
                 onClick={handleApprove}
                 disabled={!amount || isLoading}
                 className="w-full bg-accent hover:bg-accent/80 text-accent-foreground"
@@ -356,6 +359,7 @@ export function StakeCard({
             {/* Stake Button - Only visible when approved */}
             {isApproved && (
               <Button
+                type="button"
                 onClick={handleStake}
                 disabled={!amount || !lockPeriod || isLoading}
                 className={`w-full transition-all duration-300 ${
@@ -412,6 +416,7 @@ export function StakeCard({
 
         {/* Claim Rewards */}
         <Button
+          type="button"
           onClick={handleClaim}
           variant="outline"
           className="w-full border-accent/30 hover:bg-accent/20 hover:border-accent/50 bg-transparent"
