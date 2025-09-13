@@ -1,10 +1,10 @@
-import { getDefaultConfig } from "@rainbow-me/rainbowkit";
+import { createConfig, http } from "wagmi";
 import { somniaTestnet } from "../config/chains";
 
-// Configure chains for RainbowKit - Only Somnia Testnet
-export const config = getDefaultConfig({
-  appName: "Vortan Launchpad",
-  projectId:
-    process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "YOUR_PROJECT_ID",
+// Configure wagmi with Somnia Testnet
+export const config = createConfig({
   chains: [somniaTestnet],
+  transports: {
+    [somniaTestnet.id]: http(),
+  },
 });

@@ -1,32 +1,8 @@
+import { somniaTestnet } from "@reown/appkit/networks";
 import { Chain } from "viem";
 
-// Custom Somnia Testnet chain configuration
-export const somniaTestnet: Chain = {
-  id: 50312, // Correct Somnia testnet chain ID
-  name: "Somnia Testnet",
-  nativeCurrency: {
-    decimals: 18,
-    name: "STT",
-    symbol: "STT",
-  },
-  rpcUrls: {
-    default: { http: ["https://dream-rpc.somnia.network"] },
-    public: { http: ["https://dream-rpc.somnia.network"] },
-  },
-  blockExplorers: {
-    default: {
-      name: "Somnia Explorer",
-      url: "https://somnia-testnet.socialscan.io",
-    },
-  },
-  testnet: true,
-  contracts: {
-    multicall3: {
-      address: "0xca11bde05977b3631167028862be2a173976ca11",
-      blockCreated: 1,
-    },
-  },
-};
+// Re-export somniaTestnet for use in other files
+export { somniaTestnet };
 
 // Export all supported chains (only Somnia for now)
 export const supportedChains = [somniaTestnet];

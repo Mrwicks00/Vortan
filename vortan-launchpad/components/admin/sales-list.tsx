@@ -1,49 +1,46 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Eye, Upload, Settings } from "lucide-react"
-import Link from "next/link"
-
-interface Sale {
-  saleAddress: string
-  name: string
-  symbol: string
-  status: "Live" | "Upcoming" | "Ended"
-  hardCap: string
-  raised: number
-  buyers: number
-  createdAt: string
-}
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Eye, Upload, Settings } from "lucide-react";
+import Link from "next/link";
+import { Project } from "@/lib/supabase/types";
 
 interface SalesListProps {
-  sales: Sale[]
-  onDepositTokens: (saleAddress: string) => void
+  projects: Project[];
+  onDepositTokens: (saleAddress: string) => void;
 }
 
-export function SalesList({ sales, onDepositTokens }: SalesListProps) {
+export function SalesList({ projects, onDepositTokens }: SalesListProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Live":
-        return "bg-secondary/20 text-secondary border-secondary/30"
-      case "Upcoming":
-        return "bg-accent/20 text-accent border-accent/30"
-      case "Ended":
-        return "bg-muted/20 text-muted-foreground border-muted/30"
+      case "live":
+        return "bg-secondary/20 text-secondary border-secondary/30";
+      case "pending":
+        return "bg-accent/20 text-accent border-accent/30";
+      case "ended":
+        return "bg-muted/20 text-muted-foreground border-muted/30";
+      case "draft":
+        return "bg-muted/20 text-muted-foreground border-muted/30";
+      case "cancelled":
+        return "bg-destructive/20 text-destructive border-destructive/30";
       default:
-        return "bg-muted/20 text-muted-foreground border-muted/30"
+        return "bg-muted/20 text-muted-foreground border-muted/30";
     }
-  }
-
-  const formatNumber = (num: number) => {
-    return new Intl.NumberFormat().format(num)
-  }
+  };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString()
-  }
+    return new Date(dateString).toLocaleDateString();
+  };
 
   return (
     <Card className="glass-effect glow-border">
@@ -54,10 +51,12 @@ export function SalesList({ sales, onDepositTokens }: SalesListProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {sales.length === 0 ? (
+        {projects.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            <p>No sales created yet</p>
-            <p className="text-sm mt-2">Create your first token sale using the form above</p>
+            <p>No projects created yet</p>
+            <p className="text-sm mt-2">
+              Create your first project using the form above
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -66,44 +65,61 @@ export function SalesList({ sales, onDepositTokens }: SalesListProps) {
                 <TableRow className="border-border/50">
                   <TableHead>Project</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Hard Cap</TableHead>
-                  <TableHead>Raised</TableHead>
-                  <TableHead>Buyers</TableHead>
+                  <TableHead>Description</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sales.map((sale) => (
-                  <TableRow key={sale.saleAddress} className="border-border/50">
+                {projects.map((project) => (
+                  <TableRow key={project.id} className="border-border/50">
                     <TableCell>
                       <div>
-                        <div className="font-medium">{sale.name}</div>
-                        <div className="text-sm text-muted-foreground">{sale.symbol}</div>
+                        <div className="font-medium">{project.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {project.symbol}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className={getStatusColor(sale.status)}>{sale.status}</Badge>
+                      <Badge className={getStatusColor(project.status)}>
+                        {project.status.charAt(0).toUpperCase() +
+                          project.status.slice(1)}
+                      </Badge>
                     </TableCell>
-                    <TableCell>{sale.hardCap}</TableCell>
-                    <TableCell>{formatNumber(sale.raised)}</TableCell>
-                    <TableCell>{formatNumber(sale.buyers)}</TableCell>
-                    <TableCell>{formatDate(sale.createdAt)}</TableCell>
+                    <TableCell>
+                      <div className="max-w-xs truncate text-sm text-muted-foreground">
+                        {project.short_description}
+                      </div>
+                    </TableCell>
+                    <TableCell>{formatDate(project.created_at)}</TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
-                        <Link href={`/projects/${sale.saleAddress}`}>
+                        {project.sale_address ? (
+                          <Link href={`/projects/${project.sale_address}`}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-primary/30 hover:bg-primary/20 bg-transparent"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                        ) : (
                           <Button
                             size="sm"
                             variant="outline"
-                            className="border-primary/30 hover:bg-primary/20 bg-transparent"
+                            disabled
+                            className="border-muted/30"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                        </Link>
+                        )}
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => onDepositTokens(sale.saleAddress)}
+                          onClick={() => onDepositTokens(project.sale_address || "")}
+                          disabled={!project.sale_address}
                           className="border-accent/30 hover:bg-accent/20"
                         >
                           <Upload className="h-4 w-4" />
@@ -118,5 +134,5 @@ export function SalesList({ sales, onDepositTokens }: SalesListProps) {
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

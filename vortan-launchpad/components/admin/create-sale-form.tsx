@@ -1,30 +1,113 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { Upload, Rocket, DollarSign, Calendar, Settings, Globe, Loader2 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import {
+  Upload,
+  Rocket,
+  DollarSign,
+  Calendar,
+  Settings,
+  Globe,
+  Loader2,
+} from "lucide-react";
+import { toast } from "react-toastify";
+import { useProjects } from "@/lib/web3/hooks/use-projects";
+import { useSaleDeployment } from "@/lib/web3/hooks/use-sale-deployment";
+import { storageApi } from "@/lib/supabase/storage";
+import { ImageUpload } from "@/components/ui/image-upload";
+import { BaseTokenType } from "@/lib/web3/utils/token-resolver";
 
 interface CreateSaleFormProps {
-  onSubmit: (formData: any) => void
+  onSubmit: (formData: any) => void;
 }
 
 export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
-  const [isLoading, setIsLoading] = useState(false)
-  const { toast } = useToast()
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const { createProject, updateProject } = useProjects();
+  const {
+    deploySale,
+    isDeploying,
+    isDeployPending,
+    isDeploySuccess,
+    deploymentError,
+    deployHash,
+    saleAddress,
+  } = useSaleDeployment();
+
+  // Update project with actual sale address when it becomes available
+  useEffect(() => {
+    if (saleAddress && currentProjectId) {
+      updateProject(currentProjectId, {
+        sale_address: saleAddress,
+        status: "live",
+      })
+        .then(() => {
+          toast.success("Contract deployed successfully! Project is now live!");
+          // Redirect to the project page now that we have the sale address
+          router.push(`/projects/${saleAddress}`);
+        })
+        .catch((error) => {
+          console.error("Failed to update project with sale address:", error);
+          toast.error("Failed to update project with sale address");
+        });
+    }
+  }, [saleAddress, currentProjectId, updateProject, router]);
+
+  // Update project with transaction hash when available
+  useEffect(() => {
+    if (deployHash && currentProjectId && !saleAddress) {
+      updateProject(currentProjectId, {
+        sale_address: deployHash,
+        status: "pending",
+      })
+        .then(() => {
+          console.log("Project updated with transaction hash:", deployHash);
+        })
+        .catch((error) => {
+          console.error(
+            "Failed to update project with transaction hash:",
+            error
+          );
+        });
+    }
+  }, [deployHash, currentProjectId, saleAddress, updateProject]);
+
+  // Handle deployment errors
+  useEffect(() => {
+    if (deploymentError) {
+      toast.error(`Contract deployment failed: ${deploymentError}`);
+    }
+  }, [deploymentError]);
+
+  // Show loading toast when transaction is pending
+  useEffect(() => {
+    if (isDeployPending && currentProjectId) {
+      toast.info("Transaction submitted! Waiting for confirmation...");
+    }
+  }, [isDeployPending, currentProjectId]);
 
   const [formData, setFormData] = useState({
     // Token Info
     tokenAddress: "",
-    baseToken: "USDC",
+    baseToken: "USDC" as BaseTokenType,
     price: "",
     hardCap: "",
     softCap: "",
@@ -42,9 +125,9 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
     vestDuration: "",
     tgePercentage: "10",
 
-    // Fees
-    tokenFee: "5",
-    feeRecipient: "",
+    // Fees (platform controlled - not user input)
+    // tokenFee: "5", // Fixed at 5%
+    // feeRecipient: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", // Fixed address
 
     // Project Info
     projectOwner: "",
@@ -60,37 +143,197 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
     // Media
     bannerFile: null as File | null,
     logoFile: null as File | null,
-  })
+  });
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-  }
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   const handleFileChange = (field: string, file: File | null) => {
-    setFormData((prev) => ({ ...prev, [field]: file }))
-  }
+    setFormData((prev) => ({ ...prev, [field]: file }));
+  };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
 
-    try {
-      const response = await fetch("/api/admin/sales", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      })
+    // Validate required fields
+    const requiredFields = {
+      "Project Owner": formData.projectOwner,
+      "Project Name": formData.name,
+      "Token Symbol": formData.symbol,
+      "Short Description": formData.shortDescription,
+      "Token Address": formData.tokenAddress,
+      Price: formData.price,
+      "Hard Cap": formData.hardCap,
+      "Soft Cap": formData.softCap,
+      "Start Time": formData.startTime,
+      "End Time": formData.endTime,
+      "TGE Time": formData.tgeTime,
+    };
 
-      const result = await response.json()
+    const missingFields = Object.entries(requiredFields)
+      .filter(([_, value]) => !value || value.trim() === "")
+      .map(([field, _]) => field);
 
-      if (result.success) {
-        toast({
-          title: "Sale Created Successfully",
-          description: `${formData.name} sale has been created with address ${result.data.saleAddress}`,
-        })
-        onSubmit(result.data)
+    if (missingFields.length > 0) {
+      toast.error(
+        `Please fill in required fields: ${missingFields.join(", ")}`
+      );
+      return;
+    }
+
+    // Validate numeric fields
+    if (isNaN(Number(formData.price)) || Number(formData.price) <= 0) {
+      toast.error("Price must be a valid positive number");
+      return;
+    }
+
+    if (isNaN(Number(formData.hardCap)) || Number(formData.hardCap) <= 0) {
+      toast.error("Hard Cap must be a valid positive number");
+      return;
+    }
+
+    if (isNaN(Number(formData.softCap)) || Number(formData.softCap) <= 0) {
+      toast.error("Soft Cap must be a valid positive number");
+      return;
+    }
+
+    if (Number(formData.softCap) >= Number(formData.hardCap)) {
+      toast.error("Soft Cap must be less than Hard Cap");
+      return;
+    }
+
+    // Validate dates
+    const startTime = new Date(formData.startTime).getTime();
+    const endTime = new Date(formData.endTime).getTime();
+    const tgeTime = new Date(formData.tgeTime).getTime();
+    const now = Date.now();
+
+    if (startTime <= now) {
+      toast.error("Start Time must be in the future");
+      return;
+    }
+
+    if (endTime <= startTime) {
+      toast.error("End Time must be after Start Time");
+      return;
+    }
+
+    if (tgeTime < endTime) {
+      toast.error("TGE Time must be after End Time");
+      return;
+    }
+
+    // Validate wallet address format (basic check)
+    if (!formData.projectOwner.match(/^0x[a-fA-F0-9]{40}$/)) {
+      toast.error("Project Owner must be a valid wallet address (0x...)");
+      return;
+    }
+
+    // Validate token address format (basic check)
+    if (!formData.tokenAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
+      toast.error("Token Address must be a valid contract address (0x...)");
+      return;
+    }
+
+    setIsLoading(true);
+
+    const submitForm = async () => {
+      try {
+        // First create the project to get an ID
+        const newProject = await createProject({
+          sale_address: null, // Will be updated after contract deployment
+          project_owner: formData.projectOwner,
+          name: formData.name,
+          symbol: formData.symbol,
+          short_description: formData.shortDescription,
+          long_description: formData.longDescription,
+          website: formData.website,
+          twitter: formData.twitter,
+          discord: formData.discord,
+          medium: formData.medium,
+          status: "draft",
+        });
+
+        // Set current project ID for later update
+        setCurrentProjectId(newProject.id);
+
+        // Upload images if provided
+        let bannerUrl: string | undefined;
+        let logoUrl: string | undefined;
+
+        try {
+          if (formData.bannerFile) {
+            bannerUrl = await storageApi.uploadImage(
+              formData.bannerFile,
+              newProject.id,
+              "banner"
+            );
+          }
+
+          if (formData.logoFile) {
+            logoUrl = await storageApi.uploadImage(
+              formData.logoFile,
+              newProject.id,
+              "logo"
+            );
+          }
+
+          // Update project with image URLs
+          if (bannerUrl || logoUrl) {
+            await updateProject(newProject.id, {
+              banner_url: bannerUrl,
+              logo_url: logoUrl,
+            });
+          }
+        } catch (imageError) {
+          console.error("Image upload error:", imageError);
+          toast.warning(
+            "Project created but image upload failed. You can update images later."
+          );
+        }
+
+        // Deploy smart contract
+        try {
+          const txHash = await deploySale({
+            saleToken: formData.tokenAddress,
+            baseToken: formData.baseToken,
+            price: formData.price,
+            startTime: formData.startTime,
+            endTime: formData.endTime,
+            tgeTime: formData.tgeTime,
+            tgePercentage: formData.tgePercentage,
+            vestDuration: formData.vestDuration,
+            hardCap: formData.hardCap,
+            softCap: formData.softCap,
+            perWalletCap: formData.perWalletCap,
+            tierCapT1: formData.tierCapT1,
+            tierCapT2: formData.tierCapT2,
+            tierCapT3: formData.tierCapT3,
+            projectOwner: formData.projectOwner,
+          });
+
+          // Update project with pending status (sale address will be updated after confirmation)
+          await updateProject(newProject.id, {
+            sale_address: null, // Will be updated when transaction is confirmed
+            status: "pending",
+          });
+
+          // Show loading toast while transaction is pending
+          toast.info(
+            `${formData.name} project created! Contract deployment in progress...`
+          );
+        } catch (contractError) {
+          console.error("Contract deployment failed:", contractError);
+          toast.warning(
+            "Project created but contract deployment failed. You can deploy it later."
+          );
+
+          // Redirect to admin page if contract deployment failed
+          router.push(`/admin`);
+        }
+
+        onSubmit(newProject);
 
         // Reset form
         setFormData({
@@ -108,8 +351,6 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
           tgeTime: "",
           vestDuration: "",
           tgePercentage: "10",
-          tokenFee: "5",
-          feeRecipient: "",
           projectOwner: "",
           name: "",
           symbol: "",
@@ -121,26 +362,24 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
           longDescription: "",
           bannerFile: null,
           logoFile: null,
-        })
-      } else {
-        throw new Error(result.error || "Failed to create sale")
+        });
+      } catch (error) {
+        console.error("Error creating project:", error);
+        toast.error(
+          error instanceof Error ? error.message : "Failed to create project"
+        );
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Error creating sale:", error)
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create sale",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
+    };
+
+    submitForm();
+  };
 
   const formatNumber = (num: string) => {
-    if (!num) return ""
-    return new Intl.NumberFormat().format(Number.parseFloat(num))
-  }
+    if (!num) return "";
+    return new Intl.NumberFormat().format(Number.parseFloat(num));
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -155,18 +394,23 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="tokenAddress">Token Address (Sold)</Label>
+              <Label htmlFor="tokenAddress">Token Address (Sold) *</Label>
               <Input
                 id="tokenAddress"
                 placeholder="0x..."
                 value={formData.tokenAddress}
-                onChange={(e) => handleInputChange("tokenAddress", e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("tokenAddress", e.target.value)
+                }
                 className="bg-input/50 border-border/50 focus:border-primary/50"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="baseToken">Base Token</Label>
-              <Select value={formData.baseToken} onValueChange={(value) => handleInputChange("baseToken", value)}>
+              <Select
+                value={formData.baseToken}
+                onValueChange={(value) => handleInputChange("baseToken", value)}
+              >
                 <SelectTrigger className="bg-input/50 border-border/50 focus:border-primary/50">
                   <SelectValue />
                 </SelectTrigger>
@@ -180,7 +424,7 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="price">Price (tokens per 1 base)</Label>
+              <Label htmlFor="price">Price (tokens per 1 base) *</Label>
               <Input
                 id="price"
                 type="number"
@@ -191,7 +435,7 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="hardCap">Hard Cap</Label>
+              <Label htmlFor="hardCap">Hard Cap *</Label>
               <Input
                 id="hardCap"
                 type="number"
@@ -202,7 +446,7 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="softCap">Soft Cap</Label>
+              <Label htmlFor="softCap">Soft Cap *</Label>
               <Input
                 id="softCap"
                 type="number"
@@ -233,7 +477,9 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
                 type="number"
                 placeholder="1000"
                 value={formData.perWalletCap}
-                onChange={(e) => handleInputChange("perWalletCap", e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("perWalletCap", e.target.value)
+                }
                 className="bg-input/50 border-border/50 focus:border-primary/50"
               />
             </div>
@@ -285,7 +531,7 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="startTime">Start Time</Label>
+              <Label htmlFor="startTime">Start Time *</Label>
               <Input
                 id="startTime"
                 type="datetime-local"
@@ -295,7 +541,7 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="endTime">End Time</Label>
+              <Label htmlFor="endTime">End Time *</Label>
               <Input
                 id="endTime"
                 type="datetime-local"
@@ -308,7 +554,7 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="tgeTime">TGE Time</Label>
+              <Label htmlFor="tgeTime">TGE Time *</Label>
               <Input
                 id="tgeTime"
                 type="datetime-local"
@@ -324,7 +570,9 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
                 type="number"
                 placeholder="10"
                 value={formData.tgePercentage}
-                onChange={(e) => handleInputChange("tgePercentage", e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("tgePercentage", e.target.value)
+                }
                 className="bg-input/50 border-border/50 focus:border-primary/50"
               />
             </div>
@@ -335,7 +583,9 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
                 type="number"
                 placeholder="6"
                 value={formData.vestDuration}
-                onChange={(e) => handleInputChange("vestDuration", e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("vestDuration", e.target.value)
+                }
                 className="bg-input/50 border-border/50 focus:border-primary/50"
               />
             </div>
@@ -354,7 +604,7 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Project Name</Label>
+              <Label htmlFor="name">Project Name *</Label>
               <Input
                 id="name"
                 placeholder="Andromeda Quest"
@@ -364,7 +614,7 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="symbol">Token Symbol</Label>
+              <Label htmlFor="symbol">Token Symbol *</Label>
               <Input
                 id="symbol"
                 placeholder="ANDQ"
@@ -374,35 +624,42 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="projectOwner">Project Owner</Label>
+              <Label htmlFor="projectOwner">Project Owner *</Label>
               <Input
                 id="projectOwner"
                 placeholder="0x..."
                 value={formData.projectOwner}
-                onChange={(e) => handleInputChange("projectOwner", e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("projectOwner", e.target.value)
+                }
                 className="bg-input/50 border-border/50 focus:border-primary/50"
+                required
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="shortDescription">Short Description</Label>
+            <Label htmlFor="shortDescription">Short Description *</Label>
             <Input
               id="shortDescription"
               placeholder="AI-powered MMO set in the Andromeda galaxy"
               value={formData.shortDescription}
-              onChange={(e) => handleInputChange("shortDescription", e.target.value)}
+              onChange={(e) =>
+                handleInputChange("shortDescription", e.target.value)
+              }
               className="bg-input/50 border-border/50 focus:border-primary/50"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="longDescription">Long Description</Label>
+            <Label htmlFor="longDescription">Long Description (Optional)</Label>
             <Textarea
               id="longDescription"
               placeholder="Detailed project description..."
               value={formData.longDescription}
-              onChange={(e) => handleInputChange("longDescription", e.target.value)}
+              onChange={(e) =>
+                handleInputChange("longDescription", e.target.value)
+              }
               className="bg-input/50 border-border/50 focus:border-primary/50 min-h-[100px]"
             />
           </div>
@@ -411,7 +668,7 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="website">Website</Label>
+              <Label htmlFor="website">Website (Optional)</Label>
               <Input
                 id="website"
                 placeholder="https://project.example"
@@ -421,7 +678,7 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="twitter">Twitter</Label>
+              <Label htmlFor="twitter">Twitter (Optional)</Label>
               <Input
                 id="twitter"
                 placeholder="https://x.com/project"
@@ -431,7 +688,7 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="discord">Discord</Label>
+              <Label htmlFor="discord">Discord (Optional)</Label>
               <Input
                 id="discord"
                 placeholder="https://discord.gg/project"
@@ -441,7 +698,7 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="medium">Medium</Label>
+              <Label htmlFor="medium">Medium (Optional)</Label>
               <Input
                 id="medium"
                 placeholder="https://medium.com/@project"
@@ -465,26 +722,20 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="banner">Banner Image</Label>
-              <Input
-                id="banner"
-                type="file"
+              <Label>Banner Image (Optional)</Label>
+              <ImageUpload
+                onFileSelect={(file) => handleFileChange("bannerFile", file)}
+                currentFile={formData.bannerFile}
                 accept="image/*"
-                onChange={(e) => handleFileChange("bannerFile", e.target.files?.[0] || null)}
-                className="bg-input/50 border-border/50 focus:border-primary/50"
               />
-              <p className="text-xs text-muted-foreground">Recommended: 1200x400px</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="logo">Logo Image</Label>
-              <Input
-                id="logo"
-                type="file"
+              <Label>Logo Image (Optional)</Label>
+              <ImageUpload
+                onFileSelect={(file) => handleFileChange("logoFile", file)}
+                currentFile={formData.logoFile}
                 accept="image/*"
-                onChange={(e) => handleFileChange("logoFile", e.target.files?.[0] || null)}
-                className="bg-input/50 border-border/50 focus:border-primary/50"
               />
-              <p className="text-xs text-muted-foreground">Recommended: 200x200px</p>
             </div>
           </div>
         </CardContent>
@@ -495,31 +746,35 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
         <CardHeader>
           <CardTitle className="font-heading text-xl flex items-center space-x-2">
             <DollarSign className="h-5 w-5 text-accent" />
-            <span>Fee Configuration</span>
+            <span>Platform Fee Configuration</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="tokenFee">Token Fee (%)</Label>
+              <Label htmlFor="tokenFee">Platform Fee (%)</Label>
               <Input
                 id="tokenFee"
                 type="number"
-                placeholder="5"
-                value={formData.tokenFee}
-                onChange={(e) => handleInputChange("tokenFee", e.target.value)}
-                className="bg-input/50 border-border/50 focus:border-primary/50"
+                value="5"
+                disabled
+                className="bg-muted/50 border-muted/50 text-muted-foreground cursor-not-allowed"
               />
+              <p className="text-xs text-muted-foreground">
+                Platform fee is fixed at 5% and cannot be changed
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="feeRecipient">Fee Recipient</Label>
               <Input
                 id="feeRecipient"
-                placeholder="0x... (Treasury address)"
-                value={formData.feeRecipient}
-                onChange={(e) => handleInputChange("feeRecipient", e.target.value)}
-                className="bg-input/50 border-border/50 focus:border-primary/50"
+                value="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+                disabled
+                className="bg-muted/50 border-muted/50 text-muted-foreground cursor-not-allowed font-mono text-sm"
               />
+              <p className="text-xs text-muted-foreground">
+                Platform treasury address (fixed)
+              </p>
             </div>
           </div>
         </CardContent>
@@ -530,13 +785,13 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
         <Button
           type="submit"
           size="lg"
-          disabled={isLoading}
+          disabled={isLoading || isDeploying}
           className="bg-gradient-to-r from-primary to-secondary hover:from-primary/80 hover:to-secondary/80 transition-all duration-300 animate-glow px-8"
         >
-          {isLoading ? (
+          {isLoading || isDeploying ? (
             <>
               <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-              Creating Sale...
+              {isDeploying ? "Deploying Contract..." : "Creating Project..."}
             </>
           ) : (
             <>
@@ -547,5 +802,5 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
         </Button>
       </div>
     </form>
-  )
+  );
 }

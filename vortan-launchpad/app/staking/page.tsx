@@ -7,8 +7,9 @@ import { StakeCard } from "@/components/staking/stake-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertTriangle, Wallet } from "lucide-react";
-import { useDualStakingEthers } from "@/lib/web3/hooks/use-dual-staking-ethers";
+import { useDualStaking } from "@/lib/web3/hooks/use-dual-staking";
 import { Button } from "@/components/ui/button";
+import { useAccount } from "wagmi";
 
 export default function StakingPage() {
   const {
@@ -25,13 +26,13 @@ export default function StakingPage() {
     approveTokens,
     checkAllowance,
     getUserTokenBalance,
-  } = useDualStakingEthers();
+  } = useDualStaking();
 
-  const { isConnected, address } = vortStaking;
+  const { isConnected, address } = useAccount();
   const [localError, setLocalError] = useState<string | null>(null);
 
   // Show network warning if not on correct network
-  if (isConnected && !vortStaking.isConnected) {
+  if (!isConnected) {
     return (
       <MainLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
@@ -81,17 +82,33 @@ export default function StakingPage() {
           },
           isLoading: somiStaking.isLoading,
         },
-        aggregator: {
-          somiWeightBps: 8000,
-          t1: "1000",
-          t2: "5000",
-          t3: "20000",
-          combined: (
+        aggregator: (() => {
+          const t1 = 1000;
+          const t2 = 5000;
+          const t3 = 20000;
+          const combined =
             parseFloat(combinedData.vort.userTotalPoints || "0") +
-            parseFloat(combinedData.somi.userTotalPoints || "0") * 0.8
-          ).toString(),
-          tier: 1,
-        },
+            parseFloat(combinedData.somi.userTotalPoints || "0") * 0.8;
+
+          // Calculate tier based on combined points
+          let tier = 0;
+          if (combined >= t3) {
+            tier = 3;
+          } else if (combined >= t2) {
+            tier = 2;
+          } else if (combined >= t1) {
+            tier = 1;
+          }
+
+          return {
+            somiWeightBps: 8000,
+            t1: t1.toString(),
+            t2: t2.toString(),
+            t3: t3.toString(),
+            combined: combined.toString(),
+            tier: tier,
+          };
+        })(),
       }
     : null;
 
@@ -103,6 +120,19 @@ export default function StakingPage() {
   console.log("Debug - isLoading:", isLoading);
   console.log("Debug - error:", error);
   console.log("Debug - localError:", localError);
+
+  // Debug tier calculation
+  if (stakingData) {
+    console.log("Debug - Tier calculation:", {
+      vortPoints: stakingData.vort.points,
+      somiPoints: stakingData.somi.points,
+      combined: stakingData.aggregator.combined,
+      tier: stakingData.aggregator.tier,
+      t1: stakingData.aggregator.t1,
+      t2: stakingData.aggregator.t2,
+      t3: stakingData.aggregator.t3,
+    });
+  }
 
   const handleStake = async (
     tokenName: "VORT" | "SOMI",
@@ -211,8 +241,6 @@ export default function StakingPage() {
       errorMessage = error;
     } else if (localError) {
       errorMessage = localError;
-    } else if (isConnected && !vortStaking.isConnected) {
-      errorMessage = "Please connect your wallet to access staking.";
     } else if (isConnected && !combinedData) {
       errorMessage =
         "Contracts are not responding. Please check your network connection.";
@@ -275,6 +303,8 @@ export default function StakingPage() {
             onApprove={(amount) => approveTokens("VORT", amount)}
             onGetBalance={() => getUserTokenBalance("VORT")}
             onCheckAllowance={() => checkAllowance("VORT")}
+            isApprovePending={vortStaking.isApprovePending}
+            isApproveSuccess={vortStaking.isApproveSuccess}
           />
 
           {/* SOMI Staking */}
@@ -289,6 +319,8 @@ export default function StakingPage() {
             onApprove={(amount) => approveTokens("SOMI", amount)}
             onGetBalance={() => getUserTokenBalance("SOMI")}
             onCheckAllowance={() => checkAllowance("SOMI")}
+            isApprovePending={somiStaking.isApprovePending}
+            isApproveSuccess={somiStaking.isApproveSuccess}
           />
         </div>
 

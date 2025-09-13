@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useMemo } from "react";
 import { useAccount, useBalance, useChainId } from "wagmi";
 import { getChainById } from "../config/chains";
 
@@ -84,35 +84,56 @@ export function WalletProvider({ children }: WalletProviderProps) {
     console.log("Network switching handled by RainbowKit");
   };
 
-  // Format balances
-  const formatBalance = (balance: any) => {
-    if (!balance) return "0";
-    return parseFloat(balance.formatted).toFixed(4);
-  };
+  // Format balances - memoized to prevent unnecessary re-renders
+  const formatBalance = useMemo(
+    () => (balance: any) => {
+      if (!balance) return "0";
+      return parseFloat(balance.formatted).toFixed(4);
+    },
+    []
+  );
 
-  const contextValue: WalletContextType = {
-    // Wallet state
-    isConnected: !!isConnected,
-    address,
-    isConnecting,
+  // Memoize context value to prevent unnecessary re-renders
+  const contextValue: WalletContextType = useMemo(
+    () => ({
+      // Wallet state
+      isConnected: !!isConnected,
+      address,
+      isConnecting,
 
-    // Network state
-    chainId,
-    chainName,
-    isCorrectNetwork,
+      // Network state
+      chainId,
+      chainName,
+      isCorrectNetwork,
 
-    // Balances
-    nativeBalance: formatBalance(nativeBalanceData),
-    vortBalance: formatBalance(vortBalanceData),
-    somiBalance: formatBalance(somiBalanceData),
-    usdcBalance: formatBalance(usdcBalanceData),
+      // Balances
+      nativeBalance: formatBalance(nativeBalanceData),
+      vortBalance: formatBalance(vortBalanceData),
+      somiBalance: formatBalance(somiBalanceData),
+      usdcBalance: formatBalance(usdcBalanceData),
 
-    // Actions
-    switchToCorrectNetwork,
+      // Actions
+      switchToCorrectNetwork,
 
-    // Loading states
-    isLoading,
-  };
+      // Loading states
+      isLoading,
+    }),
+    [
+      isConnected,
+      address,
+      isConnecting,
+      chainId,
+      chainName,
+      isCorrectNetwork,
+      nativeBalanceData,
+      vortBalanceData,
+      somiBalanceData,
+      usdcBalanceData,
+      switchToCorrectNetwork,
+      isLoading,
+      formatBalance,
+    ]
+  );
 
   return (
     <WalletContext.Provider value={contextValue}>

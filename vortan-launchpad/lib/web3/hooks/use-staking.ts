@@ -9,7 +9,12 @@ import {
 } from "wagmi";
 import { parseEther, formatEther } from "viem";
 import { CONTRACT_ADDRESSES } from "../config/addresses";
-import { VORT_STAKING_ABI, SOMI_STAKING_ABI } from "../abis";
+import {
+  VORT_STAKING_ABI,
+  SOMI_STAKING_ABI,
+  VORTAN_TOKEN_ABI,
+  SOMI_TOKEN_ABI,
+} from "../abis";
 
 // Lock period options (in days)
 export const LOCK_PERIODS = {
@@ -58,9 +63,9 @@ export function useStaking(tokenType: "VORT" | "SOMI") {
     tokenType === "VORT" ? VORT_STAKING_ABI : SOMI_STAKING_ABI;
 
   console.log(`[${tokenType}] Hook initialized:`, {
-    contractAddress,
-    contractABI: contractABI ? "ABI loaded" : "ABI missing",
     address,
+    contractAddress,
+    contractABI: "ABI loaded",
     isConnected,
   });
 
@@ -352,7 +357,7 @@ export function useStaking(tokenType: "VORT" | "SOMI") {
 
       // Transform user positions data
       const transformedPositions: StakingPosition[] = userPositions
-        ? userPositions.map((pos, index) => ({
+        ? userPositions.map((pos: any, index: number) => ({
             id: index,
             amount: formatEther(pos.amount),
             lockEnd: Number(pos.lockEnd),
@@ -406,7 +411,85 @@ export function useStaking(tokenType: "VORT" | "SOMI") {
     if (isStakeSuccess || isUnstakeSuccess || isClaimSuccess) {
       refreshData();
     }
-  }, [isStakeSuccess, isUnstakeSuccess, isClaimSuccess, refreshData]);
+  }, [isStakeSuccess, isUnstakeSuccess, isClaimSuccess]);
+
+  // Check token allowance
+  const tokenAddress =
+    tokenType === "VORT"
+      ? CONTRACT_ADDRESSES.VORTAN_TOKEN
+      : CONTRACT_ADDRESSES.SOMI_TOKEN;
+
+  console.log(`[${tokenType}] Token addresses:`, {
+    tokenAddress,
+    contractAddress,
+    address,
+  });
+
+  const tokenABI = tokenType === "VORT" ? VORTAN_TOKEN_ABI : SOMI_TOKEN_ABI;
+
+  const { data: allowance } = useReadContract({
+    address: tokenAddress as `0x${string}`,
+    abi: tokenABI,
+    functionName: "allowance",
+    args: address ? [address, contractAddress] : undefined,
+  });
+
+  const checkAllowance = useCallback(async () => {
+    console.log(`[${tokenType}] Allowance data:`, {
+      allowance,
+      tokenAddress,
+      contractAddress,
+      address,
+    });
+    return allowance ? formatEther(allowance as bigint) : "0";
+  }, [allowance, tokenType, tokenAddress, contractAddress, address]);
+
+  // Get user token balance
+  const { data: tokenBalance } = useReadContract({
+    address: tokenAddress as `0x${string}`,
+    abi: tokenABI,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+  });
+
+  const getUserTokenBalance = useCallback(async () => {
+    console.log(`[${tokenType}] Balance data:`, {
+      tokenBalance,
+      tokenAddress,
+      address,
+    });
+    return tokenBalance ? formatEther(tokenBalance as bigint) : "0";
+  }, [tokenBalance, tokenType, tokenAddress, address]);
+
+  // Approve tokens
+  const { writeContract, data: approveHash } = useWriteContract();
+
+  const approveTokens = useCallback(
+    async (amount: string) => {
+      if (!address) throw new Error("Please connect your wallet");
+
+      try {
+        const amountWei = parseEther(amount);
+
+        await writeContract({
+          address: tokenAddress as `0x${string}`,
+          abi: tokenABI,
+          functionName: "approve",
+          args: [contractAddress, amountWei],
+        });
+      } catch (error) {
+        console.error(`[${tokenType}] Failed to approve tokens:`, error);
+        throw error;
+      }
+    },
+    [address, contractAddress, tokenAddress, writeContract]
+  );
+
+  // Wait for approval transaction
+  const { isLoading: isApprovePending, isSuccess: isApproveSuccess } =
+    useWaitForTransactionReceipt({
+      hash: approveHash,
+    });
 
   return {
     // Data
@@ -426,14 +509,21 @@ export function useStaking(tokenType: "VORT" | "SOMI") {
     isStakePending,
     isUnstakePending,
     isClaimPending,
+    isApprovePending,
 
     // Success states
     isStakeSuccess,
     isUnstakeSuccess,
     isClaimSuccess,
+    isApproveSuccess,
 
     // Error handling
     error,
     setError,
+
+    // Token functions
+    checkAllowance,
+    getUserTokenBalance,
+    approveTokens,
   };
 }

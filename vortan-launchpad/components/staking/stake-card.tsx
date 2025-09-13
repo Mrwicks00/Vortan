@@ -24,7 +24,7 @@ import {
   Zap,
   Crown,
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "react-toastify";
 
 interface StakingPosition {
   id: number;
@@ -58,6 +58,8 @@ interface StakeCardProps {
   onGetBalance: () => Promise<string>;
   onCheckAllowance: () => Promise<string>;
   onRefresh?: () => void;
+  isApprovePending?: boolean;
+  isApproveSuccess?: boolean;
 }
 
 export function StakeCard({
@@ -70,6 +72,8 @@ export function StakeCard({
   onGetBalance,
   onCheckAllowance,
   onRefresh,
+  isApprovePending = false,
+  isApproveSuccess = false,
 }: StakeCardProps) {
   const [amount, setAmount] = useState("");
   const [lockPeriod, setLockPeriod] = useState("");
@@ -96,7 +100,7 @@ export function StakeCard({
     };
 
     fetchData();
-  }, [onGetBalance, onCheckAllowance]);
+  }, []); // Remove the function dependencies to prevent infinite loops
 
   // Check if user is approved when amount or allowance changes
   useEffect(() => {
@@ -119,8 +123,6 @@ export function StakeCard({
 
     setIsApproved(hasAllowance && hasBalance);
   }, [amount, allowance, userBalance, tokenName]);
-
-  const { toast } = useToast();
 
   const lockOptions = [
     { days: 30, label: "30 Days", multiplier: 100 },
@@ -149,46 +151,77 @@ export function StakeCard({
     e.stopPropagation();
     if (!amount || !onApprove) return;
 
+    const toastId = toast.loading(`Approving ${amount} ${tokenName}...`, {
+      position: "top-right",
+    });
+
     try {
       setIsLoading(true);
       await onApprove(amount);
 
-      // Refresh allowance after successful approval
-      try {
-        const newAllowance = await onCheckAllowance();
-        setAllowance(newAllowance);
-      } catch (error) {
-        console.error("Error refreshing allowance:", error);
-      }
-
-      toast({
-        title: "Approval Successful",
-        description: `Successfully approved ${amount} ${tokenName} for staking`,
+      toast.update(toastId, {
+        render: `Approval transaction submitted for ${amount} ${tokenName}. Please wait for confirmation.`,
+        type: "info",
+        isLoading: true,
+        autoClose: 5000,
       });
     } catch (error) {
       console.error("Error approving tokens:", error);
-      toast({
-        title: "Approval Failed",
-        description:
+      toast.update(toastId, {
+        render:
           error instanceof Error ? error.message : "Failed to approve tokens",
-        variant: "destructive",
+        type: "error",
+        isLoading: false,
+        autoClose: 5000,
       });
-    } finally {
       setIsLoading(false);
     }
   };
+
+  // Handle approval success
+  useEffect(() => {
+    if (isApproveSuccess) {
+      // Refresh allowance after successful approval
+      const refreshAllowance = async () => {
+        try {
+          const newAllowance = await onCheckAllowance();
+          setAllowance(newAllowance);
+          toast.success(
+            `Successfully approved ${amount} ${tokenName} for staking!`,
+            {
+              position: "top-right",
+              autoClose: 5000,
+            }
+          );
+        } catch (error) {
+          console.error("Error refreshing allowance:", error);
+        }
+      };
+      refreshAllowance();
+      setIsLoading(false);
+    }
+  }, [isApproveSuccess, onCheckAllowance, amount, tokenName]);
 
   const handleStake = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (amount && lockPeriod && onStake) {
+      const toastId = toast.loading(
+        `Staking ${amount} ${tokenName} for ${lockPeriod} days...`,
+        {
+          position: "top-right",
+        }
+      );
+
       setIsLoading(true);
       try {
         await onStake(amount, Number.parseInt(lockPeriod));
 
-        toast({
-          title: "Staking Successful",
-          description: `Successfully staked ${amount} ${tokenName} for ${lockPeriod} days`,
+        toast.update(toastId, {
+          render: `Successfully staked ${amount} ${tokenName} for ${lockPeriod} days!`,
+          type: "success",
+          isLoading: false,
+          autoClose: 5000,
         });
 
         setAmount("");
@@ -197,11 +230,12 @@ export function StakeCard({
         if (onRefresh) onRefresh();
       } catch (error) {
         console.error("Error staking tokens:", error);
-        toast({
-          title: "Staking Failed",
-          description:
+        toast.update(toastId, {
+          render:
             error instanceof Error ? error.message : "Failed to stake tokens",
-          variant: "destructive",
+          type: "error",
+          isLoading: false,
+          autoClose: 5000,
         });
       } finally {
         setIsLoading(false);
@@ -209,27 +243,39 @@ export function StakeCard({
     }
   };
 
-  const handleUnstake = async (positionIndex: number) => {
+  const handleUnstake = async (e: React.MouseEvent, positionIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (onUnstake && tokenData.positions[positionIndex]) {
+      const position = tokenData.positions[positionIndex];
+      const toastId = toast.loading(
+        `Unstaking ${position.amount} ${tokenName}...`,
+        {
+          position: "top-right",
+        }
+      );
+
       setIsLoading(true);
       try {
-        const position = tokenData.positions[positionIndex];
         // Use the actual Web3 function passed from parent
         await onUnstake(position.amount);
 
-        toast({
-          title: "Unstaking Successful",
-          description: `Successfully unstaked ${position.amount} ${tokenName}`,
+        toast.update(toastId, {
+          render: `Successfully unstaked ${position.amount} ${tokenName}!`,
+          type: "success",
+          isLoading: false,
+          autoClose: 5000,
         });
 
         if (onRefresh) onRefresh();
       } catch (error) {
         console.error("Error unstaking tokens:", error);
-        toast({
-          title: "Unstaking Failed",
-          description:
+        toast.update(toastId, {
+          render:
             error instanceof Error ? error.message : "Failed to unstake tokens",
-          variant: "destructive",
+          type: "error",
+          isLoading: false,
+          autoClose: 5000,
         });
       } finally {
         setIsLoading(false);
@@ -237,26 +283,38 @@ export function StakeCard({
     }
   };
 
-  const handleClaim = async () => {
+  const handleClaim = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (onClaim) {
+      const toastId = toast.loading(
+        `Claiming ${tokenData.pending} ${tokenName} rewards...`,
+        {
+          position: "top-right",
+        }
+      );
+
       setIsLoading(true);
       try {
         // Use the actual Web3 function passed from parent
-        onClaim();
+        await onClaim();
 
-        toast({
-          title: "Claim Successful",
-          description: `Successfully claimed ${tokenData.pending} ${tokenName} rewards`,
+        toast.update(toastId, {
+          render: `Successfully claimed ${tokenData.pending} ${tokenName} rewards!`,
+          type: "success",
+          isLoading: false,
+          autoClose: 5000,
         });
 
         if (onRefresh) onRefresh();
       } catch (error) {
         console.error("Error claiming rewards:", error);
-        toast({
-          title: "Claim Failed",
-          description:
+        toast.update(toastId, {
+          render:
             error instanceof Error ? error.message : "Failed to claim rewards",
-          variant: "destructive",
+          type: "error",
+          isLoading: false,
+          autoClose: 5000,
         });
       } finally {
         setIsLoading(false);
@@ -333,39 +391,79 @@ export function StakeCard({
           </div>
 
           {/* Action Buttons */}
-          <div className="space-y-3">
-            {/* Approve Button - Always visible when not approved */}
-            {!isApproved && (
-              <Button
-                type="button"
-                onClick={handleApprove}
-                disabled={!amount || isLoading}
-                className="w-full bg-accent hover:bg-accent/80 text-accent-foreground"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Approving...
-                  </>
-                ) : (
-                  <>
-                    <Wallet className="h-4 w-4 mr-2" />
-                    Approve {tokenName}
-                  </>
-                )}
-              </Button>
-            )}
+          <div className="space-y-4">
+            {/* Step 1: Approve Button */}
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                    isApproved
+                      ? "bg-green-500 text-white"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {isApproved ? "✓" : "1"}
+                </div>
+                <span>Approve {tokenName} for staking</span>
+              </div>
 
-            {/* Stake Button - Only visible when approved */}
-            {isApproved && (
+              {!isApproved && (
+                <Button
+                  type="button"
+                  onClick={handleApprove}
+                  disabled={!amount || isLoading || isApprovePending}
+                  className="w-full bg-accent hover:bg-accent/80 text-accent-foreground"
+                >
+                  {isLoading || isApprovePending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {isApprovePending
+                        ? "Waiting for confirmation..."
+                        : "Approving..."}
+                    </>
+                  ) : (
+                    <>
+                      <Wallet className="h-4 w-4 mr-2" />
+                      Approve {tokenName}
+                    </>
+                  )}
+                </Button>
+              )}
+
+              {isApproved && (
+                <div className="w-full p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
+                  <p className="text-sm text-green-600 font-medium">
+                    ✓ {tokenName} approved for staking
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Step 2: Stake Button */}
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                    isApproved
+                      ? "bg-primary text-white"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  2
+                </div>
+                <span>Stake your {tokenName}</span>
+              </div>
+
               <Button
                 type="button"
                 onClick={handleStake}
-                disabled={!amount || !lockPeriod || isLoading}
+                disabled={!amount || !lockPeriod || isLoading || !isApproved}
                 className={`w-full transition-all duration-300 ${
-                  tokenName === "VORT"
-                    ? "bg-gradient-to-r from-primary to-primary/80 hover:from-primary/80 hover:to-primary/60"
-                    : "bg-gradient-to-r from-secondary to-secondary/80 hover:from-secondary/80 hover:to-secondary/60"
+                  isApproved
+                    ? tokenName === "VORT"
+                      ? "bg-gradient-to-r from-primary to-primary/80 hover:from-primary/80 hover:to-primary/60"
+                      : "bg-gradient-to-r from-secondary to-secondary/80 hover:from-secondary/80 hover:to-secondary/60"
+                    : "bg-yellow-500 hover:bg-yellow-600 text-yellow-900"
                 }`}
               >
                 {isLoading ? (
@@ -380,11 +478,11 @@ export function StakeCard({
                   </>
                 )}
               </Button>
-            )}
+            </div>
 
             {/* Show balance info */}
             {amount && (
-              <div className="text-sm text-muted-foreground text-center">
+              <div className="text-sm text-muted-foreground text-center p-3 rounded-lg bg-muted/20">
                 <p>
                   Your balance: {userBalance} {tokenName}
                 </p>
@@ -417,7 +515,7 @@ export function StakeCard({
         {/* Claim Rewards */}
         <Button
           type="button"
-          onClick={handleClaim}
+          onClick={(e) => handleClaim(e)}
           variant="outline"
           className="w-full border-accent/30 hover:bg-accent/20 hover:border-accent/50 bg-transparent"
           disabled={Number.parseFloat(tokenData.pending) === 0 || isLoading}
@@ -467,7 +565,7 @@ export function StakeCard({
                     <Button
                       size="sm"
                       variant={isUnlocked ? "default" : "ghost"}
-                      onClick={() => handleUnstake(index)}
+                      onClick={(e) => handleUnstake(e, index)}
                       disabled={!isUnlocked || isLoading}
                       className={
                         isUnlocked

@@ -25,11 +25,26 @@ interface ProjectCardProps {
     }
     baseToken: string
     priceDisplay: string
-    status: "Live" | "Upcoming" | "Ended"
+    status: "Live" | "Upcoming" | "Ended" | "Draft" | "Failed"
     start: number
     end: number
     hardCap: string
     raisedPct: number
+    // Additional data
+    softCap?: string
+    totalRaised?: string
+    tgeTime?: number
+    tgeBps?: number
+    vestDuration?: number
+    tierCaps?: {
+      T1: number
+      T2: number
+      T3: number
+    }
+    perWalletCap?: number
+    projectOwner?: string
+    finalized?: boolean
+    successful?: boolean
   }
 }
 
@@ -37,11 +52,15 @@ export function ProjectCard({ project }: ProjectCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Live":
-        return "bg-secondary/20 text-secondary border-secondary/30"
+        return "bg-green-500/20 text-green-500 border-green-500/30"
       case "Upcoming":
-        return "bg-accent/20 text-accent border-accent/30"
+        return "bg-blue-500/20 text-blue-500 border-blue-500/30"
       case "Ended":
-        return "bg-muted/20 text-muted-foreground border-muted/30"
+        return "bg-gray-500/20 text-gray-500 border-gray-500/30"
+      case "Failed":
+        return "bg-red-500/20 text-red-500 border-red-500/30"
+      case "Draft":
+        return "bg-yellow-500/20 text-yellow-500 border-yellow-500/30"
       default:
         return "bg-muted/20 text-muted-foreground border-muted/30"
     }
@@ -100,6 +119,18 @@ export function ProjectCard({ project }: ProjectCardProps) {
             <span className="text-muted-foreground">Hard Cap:</span>
             <span className="font-medium">{project.hardCap}</span>
           </div>
+          {project.softCap && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Soft Cap:</span>
+              <span className="font-medium">{project.softCap}</span>
+            </div>
+          )}
+          {project.totalRaised && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Raised:</span>
+              <span className="font-medium text-green-500">{project.totalRaised}</span>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -114,6 +145,30 @@ export function ProjectCard({ project }: ProjectCardProps) {
           <span>Start: {formatDate(project.start)}</span>
           <span>End: {formatDate(project.end)}</span>
         </div>
+
+        {/* TGE and Vesting Info */}
+        {(project.tgeTime || project.vestDuration) && (
+          <div className="space-y-1 text-xs text-muted-foreground">
+            {project.tgeTime && project.tgeTime > 0 && (
+              <div className="flex justify-between">
+                <span>TGE:</span>
+                <span>{formatDate(project.tgeTime)}</span>
+              </div>
+            )}
+            {project.tgeBps && project.tgeBps > 0 && (
+              <div className="flex justify-between">
+                <span>TGE %:</span>
+                <span>{(project.tgeBps / 100).toFixed(1)}%</span>
+              </div>
+            )}
+            {project.vestDuration && project.vestDuration > 0 && (
+              <div className="flex justify-between">
+                <span>Vest Duration:</span>
+                <span>{Math.floor(project.vestDuration / (24 * 60 * 60))} days</span>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex items-center space-x-2">
           <a

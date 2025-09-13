@@ -1,87 +1,46 @@
 "use client"
 
-import { useState } from "react"
 import { MainLayout } from "@/components/layout/main-layout"
 import { CreateSaleForm } from "@/components/admin/create-sale-form"
 import { SalesList } from "@/components/admin/sales-list"
-import { useToast } from "@/hooks/use-toast"
-
-interface Sale {
-  saleAddress: string
-  name: string
-  symbol: string
-  status: "Live" | "Upcoming" | "Ended"
-  hardCap: string
-  raised: number
-  buyers: number
-  createdAt: string
-}
+import { useProjects } from "@/lib/web3/hooks/use-projects"
+import { toast } from "react-toastify"
 
 export default function AdminPage() {
-  const { toast } = useToast()
-  const [sales, setSales] = useState<Sale[]>([
-    {
-      saleAddress: "0xSale1",
-      name: "Andromeda Quest",
-      symbol: "ANDQ",
-      status: "Live",
-      hardCap: "200,000 USDC",
-      raised: 126000,
-      buyers: 812,
-      createdAt: "2025-08-20",
-    },
-    {
-      saleAddress: "0xSale2",
-      name: "Stellar Mining Corp",
-      symbol: "SMC",
-      status: "Upcoming",
-      hardCap: "150,000 SOMI",
-      raised: 0,
-      buyers: 0,
-      createdAt: "2025-08-22",
-    },
-  ])
+  const { projects, isLoading, error } = useProjects()
 
-  const handleCreateSale = (formData: any) => {
-    // Mock sale creation
-    const newSale: Sale = {
-      saleAddress: `0xSale${Date.now()}`,
-      name: formData.name,
-      symbol: formData.symbol,
-      status: "Upcoming",
-      hardCap: `${new Intl.NumberFormat().format(Number.parseFloat(formData.hardCap))} ${formData.baseToken}`,
-      raised: 0,
-      buyers: 0,
-      createdAt: new Date().toISOString().split("T")[0],
-    }
-
-    setSales((prev) => [newSale, ...prev])
-
-    toast({
-      title: "Sale Created Successfully",
-      description: `${formData.name} (${formData.symbol}) sale has been created and is pending launch.`,
-    })
-
-    // In real implementation, this would:
-    // 1. Deploy smart contract
-    // 2. Upload media to IPFS/storage
-    // 3. Store metadata in database
-    // 4. Return transaction hash and contract address
+  const handleCreateSale = (projectData: any) => {
+    toast.success(`${projectData.name} project has been created successfully!`)
   }
 
   const handleDepositTokens = (saleAddress: string) => {
-    const sale = sales.find((s) => s.saleAddress === saleAddress)
-    if (sale) {
-      toast({
-        title: "Token Deposit Simulated",
-        description: `Simulated token deposit for ${sale.name}. In production, this would call the smart contract.`,
-      })
+    const project = projects.find((p) => p.sale_address === saleAddress)
+    if (project) {
+      toast.info(`Token deposit for ${project.name} - Smart contract integration coming soon!`)
     }
+  }
 
-    // In real implementation, this would:
-    // 1. Calculate required token amount
-    // 2. Call smart contract deposit function
-    // 3. Update sale status to "Live"
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading projects...</p>
+          </div>
+        </div>
+      </MainLayout>
+    )
+  }
+
+  if (error) {
+    return (
+      <MainLayout>
+        <div className="text-center py-12">
+          <p className="text-destructive">Error loading projects: {error}</p>
+        </div>
+      </MainLayout>
+    )
   }
 
   return (
@@ -98,7 +57,7 @@ export default function AdminPage() {
 
         <CreateSaleForm onSubmit={handleCreateSale} />
 
-        <SalesList sales={sales} onDepositTokens={handleDepositTokens} />
+        <SalesList projects={projects} onDepositTokens={handleDepositTokens} />
       </div>
     </MainLayout>
   )

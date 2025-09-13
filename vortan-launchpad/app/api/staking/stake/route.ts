@@ -5,23 +5,29 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { address, token, amount, lockPeriod } = body
 
-    // Simulate staking operation
+    // Note: In a real implementation, this would:
+    // 1. Validate the staking parameters
+    // 2. Call the actual staking contract via useDualStaking hook
+    // 3. Return the real transaction hash and results
+    
+    // For now, return a placeholder response
     const stakeResult = {
-      transactionHash: `0x${Math.random().toString(16).substr(2, 64)}`,
+      transactionHash: null, // Would be the actual transaction hash
       stakedAmount: amount,
       token,
       lockPeriod,
       multiplier: lockPeriod === 30 ? 1.0 : lockPeriod === 90 ? 1.5 : 2.0,
-      estimatedRewards: amount * 0.12 * (lockPeriod / 365), // 12% APY
+      estimatedRewards: 0, // Would be calculated from contract
       unlockDate: new Date(Date.now() + lockPeriod * 24 * 60 * 60 * 1000).toISOString(),
     }
 
     return NextResponse.json({
       success: true,
       data: stakeResult,
-      message: `Successfully staked ${amount} ${token}`,
+      message: `Staking request submitted for ${amount} ${token}`,
     })
   } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to stake tokens" }, { status: 500 })
+    console.error("Error processing stake request:", error)
+    return NextResponse.json({ success: false, error: "Failed to process stake request" }, { status: 500 })
   }
 }

@@ -5,6 +5,8 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Web3Provider } from "@/lib/web3/providers/web3-provider";
 import { WalletProvider } from "@/lib/web3/contexts/wallet-context";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -49,7 +51,26 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <Web3Provider>
-            <WalletProvider>{children}</WalletProvider>
+            <WalletProvider>
+              {children}
+              <ToastContainer
+                position="top-right"
+                autoClose={5000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="dark"
+                toastStyle={{
+                  background: "rgba(0, 0, 0, 0.8)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  color: "#fff",
+                }}
+              />
+            </WalletProvider>
           </Web3Provider>
         </ThemeProvider>
       </body>

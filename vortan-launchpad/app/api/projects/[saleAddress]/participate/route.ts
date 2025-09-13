@@ -6,18 +6,23 @@ export async function POST(request: NextRequest, { params }: { params: { saleAdd
     const { address, amount, paymentToken } = body
     const { saleAddress } = params
 
-    // Simulate participation in token sale
+    // Note: In a real implementation, this would:
+    // 1. Validate the participation parameters
+    // 2. Call the actual SalePool contract via useSaleDeployment hook
+    // 3. Return the real transaction hash and results
+    
+    // For now, return a placeholder response
     const participationResult = {
-      transactionHash: `0x${Math.random().toString(16).substr(2, 64)}`,
+      transactionHash: null, // Would be the actual transaction hash
       saleAddress,
       participantAddress: address,
       contributionAmount: amount,
       paymentToken,
-      tokensAllocated: amount * 100, // Mock token allocation rate
+      tokensAllocated: 0, // Would be calculated from contract
       vestingSchedule: {
-        tgePercent: 20,
-        cliffMonths: 1,
-        vestingMonths: 12,
+        tgePercent: 0, // Would be fetched from SalePool contract
+        cliffMonths: 0, // Would be fetched from SalePool contract
+        vestingMonths: 0, // Would be fetched from SalePool contract
       },
       participationTime: new Date().toISOString(),
     }
@@ -25,9 +30,10 @@ export async function POST(request: NextRequest, { params }: { params: { saleAdd
     return NextResponse.json({
       success: true,
       data: participationResult,
-      message: `Successfully participated with ${amount} ${paymentToken}`,
+      message: `Participation request submitted for ${amount} ${paymentToken}`,
     })
   } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to participate in sale" }, { status: 500 })
+    console.error("Error processing participation request:", error)
+    return NextResponse.json({ success: false, error: "Failed to process participation request" }, { status: 500 })
   }
 }

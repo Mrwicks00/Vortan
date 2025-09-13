@@ -133,6 +133,40 @@ export function useDualStaking() {
     await Promise.all(promises);
   }, [vortStaking, somiStaking]);
 
+  // Approval functions
+  const approveTokens = useCallback(
+    (tokenType: "VORT" | "SOMI", amount: string) => {
+      if (tokenType === "VORT") {
+        return vortStaking.approveTokens(amount);
+      } else {
+        return somiStaking.approveTokens(amount);
+      }
+    },
+    [vortStaking, somiStaking]
+  );
+
+  const checkAllowance = useCallback(
+    (tokenType: "VORT" | "SOMI") => {
+      if (tokenType === "VORT") {
+        return vortStaking.checkAllowance();
+      } else {
+        return somiStaking.checkAllowance();
+      }
+    },
+    [vortStaking, somiStaking]
+  );
+
+  const getUserTokenBalance = useCallback(
+    (tokenType: "VORT" | "SOMI") => {
+      if (tokenType === "VORT") {
+        return vortStaking.getUserTokenBalance();
+      } else {
+        return somiStaking.getUserTokenBalance();
+      }
+    },
+    [vortStaking, somiStaking]
+  );
+
   return {
     // Individual staking hooks
     vortStaking,
@@ -165,5 +199,10 @@ export function useDualStaking() {
     // Wallet state
     isConnected,
     address,
+
+    // Approval functions
+    approveTokens,
+    checkAllowance,
+    getUserTokenBalance,
   };
 }

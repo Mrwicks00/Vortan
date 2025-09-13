@@ -5,10 +5,29 @@ import { Badge } from "@/components/ui/badge";
 import { Wallet, Wifi, Loader2 } from "lucide-react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useWallet } from "@/lib/web3/contexts/wallet-context";
+import { useMemo } from "react";
 
 export function Topbar() {
+  const walletContext = useWallet();
+
+  // Memoize wallet values to prevent unnecessary re-renders
   const { isConnected, address, chainName, isCorrectNetwork, isLoading } =
-    useWallet();
+    useMemo(
+      () => ({
+        isConnected: walletContext.isConnected,
+        address: walletContext.address,
+        chainName: walletContext.chainName,
+        isCorrectNetwork: walletContext.isCorrectNetwork,
+        isLoading: walletContext.isLoading,
+      }),
+      [
+        walletContext.isConnected,
+        walletContext.address,
+        walletContext.chainName,
+        walletContext.isCorrectNetwork,
+        walletContext.isLoading,
+      ]
+    );
 
   return (
     <header className="fixed top-0 right-0 left-0 z-30 h-16 glass-effect border-b border-border">

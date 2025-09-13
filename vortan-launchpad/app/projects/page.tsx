@@ -32,6 +32,7 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [filters, setFilters] = useState({
     status: "All",
     baseToken: "All",
@@ -43,10 +44,28 @@ export default function ProjectsPage() {
       try {
         const response = await fetch("/api/projects")
         const data = await response.json()
-        setProjects(data)
-        setFilteredProjects(data)
+        
+        // Check if the response is successful and contains an array
+        if (response.ok && Array.isArray(data)) {
+          setProjects(data)
+          setFilteredProjects(data)
+          setError(null)
+        } else if (data.error) {
+          console.error("API error:", data.error)
+          setError(data.error)
+          setProjects([])
+          setFilteredProjects([])
+        } else {
+          console.error("API returned invalid data:", data)
+          setError("Invalid data received from server")
+          setProjects([])
+          setFilteredProjects([])
+        }
       } catch (error) {
         console.error("Failed to fetch projects:", error)
+        setError("Failed to fetch projects")
+        setProjects([])
+        setFilteredProjects([])
       } finally {
         setLoading(false)
       }
@@ -99,7 +118,20 @@ export default function ProjectsPage() {
 
         <ProjectFilters onFiltersChange={handleFiltersChange} />
 
-        {loading ? (
+        {error ? (
+          <div className="text-center py-12">
+            <div className="glass-effect glow-border rounded-lg p-12 max-w-md mx-auto">
+              <h3 className="font-heading text-xl font-semibold text-destructive mb-2">Error Loading Projects</h3>
+              <p className="text-muted-foreground mb-4">{error}</p>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/80"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        ) : loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="glass-effect glow-border rounded-lg p-6 space-y-4">
@@ -122,14 +154,14 @@ export default function ProjectsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProjects.map((project) => (
+            {Array.isArray(filteredProjects) && filteredProjects.map((project) => (
               <ProjectCard key={project.saleAddress} project={project} />
             ))}
           </div>
         )}
 
         <div className="text-center text-sm text-muted-foreground">
-          Showing {filteredProjects.length} of {projects.length} projects
+          Showing {Array.isArray(filteredProjects) ? filteredProjects.length : 0} of {Array.isArray(projects) ? projects.length : 0} projects
         </div>
       </div>
     </MainLayout>
