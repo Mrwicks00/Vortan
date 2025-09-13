@@ -2,6 +2,7 @@
 
 import { useCallback, useState, useEffect } from "react";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { decodeEventLog } from "viem";
 import { SALE_FACTORY_ABI } from "../abis/sale-factory";
 import { CONTRACT_ADDRESSES } from "../config/addresses";
 import {
@@ -60,25 +61,27 @@ export function useSaleDeployment() {
   // Extract sale address from transaction receipt when transaction is confirmed
   useEffect(() => {
     if (receipt && isDeploySuccess) {
-      // Look for SaleCreated event in the transaction logs
-      const saleCreatedEvent = receipt.logs.find((log) => {
-        // Check if this log is from the SaleFactory contract
-        return (
+      const saleCreatedEvent = receipt.logs.find(
+        (log) =>
           log.address.toLowerCase() ===
           CONTRACT_ADDRESSES.SALE_FACTORY.toLowerCase()
-        );
-      });
+      );
 
-      if (
-        saleCreatedEvent &&
-        saleCreatedEvent.topics &&
-        saleCreatedEvent.topics[1]
-      ) {
-        // Decode the event data to get the sale address
-        // The SaleCreated event has: (address sale, address saleToken, address baseToken, address projectOwner)
-        // The sale address is the first topic (indexed parameter)
-        const saleAddr = `0x${saleCreatedEvent.topics[1].slice(26)}`; // Remove the 0x and first 24 characters
-        setSaleAddress(saleAddr);
+      if (saleCreatedEvent) {
+        try {
+          const decodedEvent = decodeEventLog({
+            abi: SALE_FACTORY_ABI,
+            data: saleCreatedEvent.data,
+            topics: saleCreatedEvent.topics,
+          });
+
+          if (decodedEvent.eventName === "SaleCreated") {
+            const { sale } = decodedEvent.args as { sale: string };
+            setSaleAddress(sale);
+          }
+        } catch (error) {
+          console.error("Error decoding event log:", error);
+        }
       }
     }
   }, [receipt, isDeploySuccess]);
@@ -122,8 +125,6 @@ export function useSaleDeployment() {
         const tier3CapBase = convertToWei(params.tierCapT3, params.baseToken);
 
         // Call SaleFactory.createSale
-        // Note: feeTokenBps and feeRecipient are handled by the SaleFactory contract
-        // Platform fee is fixed at 5% (500 basis points) and goes to the platform treasury
         await writeContract({
           address: CONTRACT_ADDRESSES.SALE_FACTORY as `0x${string}`,
           abi: SALE_FACTORY_ABI,
@@ -152,8 +153,6 @@ export function useSaleDeployment() {
           ],
         });
 
-        // Return a placeholder - the actual transaction hash will be available in deployHash state
-        // The actual sale address will be extracted from the transaction receipt
         return "pending";
       } catch (error) {
         console.error("Sale deployment error:", error);
