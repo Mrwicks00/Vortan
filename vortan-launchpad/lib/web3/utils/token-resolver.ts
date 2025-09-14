@@ -8,7 +8,7 @@ export const BASE_TOKEN_ADDRESSES = {
 } as const;
 
 export const BASE_TOKEN_DECIMALS = {
-  USDC: 6,  // USDC typically has 6 decimals
+  USDC: 6, // USDC typically has 6 decimals
   SOMI: 18, // SOMI has 18 decimals
 } as const;
 
@@ -23,17 +23,20 @@ export function getBaseTokenDecimals(baseToken: BaseTokenType): number {
 }
 
 // Convert price to contract format (numerator/denominator)
-export function convertPriceToFraction(price: string, baseToken: BaseTokenType): { num: bigint; den: bigint } {
-  const priceNum = parseFloat(price);
-  const decimals = getBaseTokenDecimals(baseToken);
-  
-  // For example: price = "0.1" means 1 sale token = 0.1 base token
-  // We need to express this as a fraction where both parts are integers
-  
-  // Convert to basis points or use a common denominator
-  const denominator = BigInt(10 ** decimals); // Use token decimals as base
-  const numerator = BigInt(Math.floor(priceNum * Number(denominator)));
-  
+export function convertPriceToFraction(
+  price: string,
+  baseToken: BaseTokenType
+): { num: bigint; den: bigint } {
+  const tokensPerBase = parseFloat(price);
+
+  // If user enters "50", it means 1 base token = 50 sale tokens
+  // Contract expects: priceNum / priceDen = tokensPerBase
+  // So: priceNum = tokensPerBase, priceDen = 1
+
+  // Use simple integers for better precision
+  const numerator = BigInt(Math.floor(tokensPerBase * 1000000)); // Use 1M as base for precision
+  const denominator = BigInt(1000000);
+
   return { num: numerator, den: denominator };
 }
 
@@ -41,7 +44,7 @@ export function convertPriceToFraction(price: string, baseToken: BaseTokenType):
 export function convertToWei(amount: string, baseToken: BaseTokenType): bigint {
   const decimals = getBaseTokenDecimals(baseToken);
   const amountNum = parseFloat(amount);
-  return BigInt(Math.floor(amountNum * (10 ** decimals)));
+  return BigInt(Math.floor(amountNum * 10 ** decimals));
 }
 
 // Convert timestamp to seconds

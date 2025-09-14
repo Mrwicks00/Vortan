@@ -1,24 +1,27 @@
-"use client"
+"use client";
 
-import { MainLayout } from "@/components/layout/main-layout"
-import { CreateSaleForm } from "@/components/admin/create-sale-form"
-import { SalesList } from "@/components/admin/sales-list"
-import { useProjects } from "@/lib/web3/hooks/use-projects"
-import { toast } from "react-toastify"
+import { MainLayout } from "@/components/layout/main-layout";
+import { CreateSaleForm } from "@/components/admin/create-sale-form";
+import { SalesList } from "@/components/admin/sales-list";
+import { TokenDepositForm } from "@/components/admin/token-deposit-form";
+import { useProjects } from "@/lib/web3/hooks/use-projects";
+import { toast } from "react-toastify";
 
 export default function AdminPage() {
-  const { projects, isLoading, error } = useProjects()
+  const { projects, isLoading, error } = useProjects();
 
   const handleCreateSale = (projectData: any) => {
-    toast.success(`${projectData.name} project has been created successfully!`)
-  }
+    toast.success(`${projectData.name} project has been created successfully!`);
+  };
 
   const handleDepositTokens = (saleAddress: string) => {
-    const project = projects.find((p) => p.sale_address === saleAddress)
+    const project = projects.find((p) => p.sale_address === saleAddress);
     if (project) {
-      toast.info(`Token deposit for ${project.name} - Smart contract integration coming soon!`)
+      toast.info(
+        `Token deposit for ${project.name} - Smart contract integration coming soon!`
+      );
     }
-  }
+  };
 
   if (isLoading) {
     return (
@@ -30,7 +33,7 @@ export default function AdminPage() {
           </div>
         </div>
       </MainLayout>
-    )
+    );
   }
 
   if (error) {
@@ -40,7 +43,7 @@ export default function AdminPage() {
           <p className="text-destructive">Error loading projects: {error}</p>
         </div>
       </MainLayout>
-    )
+    );
   }
 
   return (
@@ -57,8 +60,32 @@ export default function AdminPage() {
 
         <CreateSaleForm onSubmit={handleCreateSale} />
 
+        {/* Unfunded Projects Section */}
+        {projects.filter((p) => p.sale?.fundingStatus === "Unfunded").length >
+          0 && (
+          <div className="space-y-4">
+            <h2 className="font-heading text-2xl font-bold text-orange-500">
+              Unfunded Projects - Deposit Tokens
+            </h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {projects
+                .filter(
+                  (p) => p.sale?.fundingStatus === "Unfunded" && p.sale_address
+                )
+                .map((project) => (
+                  <TokenDepositForm
+                    key={project.sale_address}
+                    saleAddress={project.sale_address!}
+                    saleTokenAddress={project.sale?.saleTokenAddress || ""}
+                    projectOwner={project.sale?.projectOwner || ""}
+                  />
+                ))}
+            </div>
+          </div>
+        )}
+
         <SalesList projects={projects} onDepositTokens={handleDepositTokens} />
       </div>
     </MainLayout>
-  )
+  );
 }

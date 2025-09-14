@@ -1,74 +1,82 @@
-"use client"
+"use client";
 
-import Image from "next/image"
-import Link from "next/link"
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
-import { ExternalLink, Twitter, MessageCircle, FileText } from "lucide-react"
-import { cn } from "@/lib/utils"
+import Image from "next/image";
+import Link from "next/link";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { ExternalLink, Twitter, MessageCircle, FileText } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ProjectCardProps {
   project: {
-    saleAddress: string
-    name: string
-    symbol: string
-    bannerUrl: string
-    logoUrl: string
-    description: string
-    website: string
+    saleAddress: string;
+    name: string;
+    symbol: string;
+    bannerUrl: string;
+    logoUrl: string;
+    description: string;
+    website: string;
     socials: {
-      x: string
-      discord: string
-      medium: string
-    }
-    baseToken: string
-    priceDisplay: string
-    status: "Live" | "Upcoming" | "Ended" | "Draft" | "Failed"
-    start: number
-    end: number
-    hardCap: string
-    raisedPct: number
+      x: string;
+      discord: string;
+      medium: string;
+    };
+    baseToken: string;
+    priceDisplay: string;
+    status: "Live" | "Upcoming" | "Ended" | "Draft" | "Failed";
+    fundingStatus?: "Funded" | "Unfunded";
+    start: number;
+    end: number;
+    hardCap: string;
+    raisedPct: number;
     // Additional data
-    softCap?: string
-    totalRaised?: string
-    tgeTime?: number
-    tgeBps?: number
-    vestDuration?: number
+    softCap?: string;
+    totalRaised?: string;
+    tgeTime?: number;
+    tgeBps?: number;
+    vestDuration?: number;
     tierCaps?: {
-      T1: number
-      T2: number
-      T3: number
-    }
-    perWalletCap?: number
-    projectOwner?: string
-    finalized?: boolean
-    successful?: boolean
-  }
+      T1: number;
+      T2: number;
+      T3: number;
+    };
+    perWalletCap?: number;
+    projectOwner?: string;
+    finalized?: boolean;
+    successful?: boolean;
+  };
 }
 
 export function ProjectCard({ project }: ProjectCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Live":
-        return "bg-green-500/20 text-green-500 border-green-500/30"
+        return "bg-green-500/20 text-green-500 border-green-500/30";
       case "Upcoming":
-        return "bg-blue-500/20 text-blue-500 border-blue-500/30"
+        return "bg-blue-500/20 text-blue-500 border-blue-500/30";
+      case "Unfunded":
+        return "bg-orange-500/20 text-orange-500 border-orange-500/30";
       case "Ended":
-        return "bg-gray-500/20 text-gray-500 border-gray-500/30"
+        return "bg-gray-500/20 text-gray-500 border-gray-500/30";
       case "Failed":
-        return "bg-red-500/20 text-red-500 border-red-500/30"
+        return "bg-red-500/20 text-red-500 border-red-500/30";
       case "Draft":
-        return "bg-yellow-500/20 text-yellow-500 border-yellow-500/30"
+        return "bg-yellow-500/20 text-yellow-500 border-yellow-500/30";
       default:
-        return "bg-muted/20 text-muted-foreground border-muted/30"
+        return "bg-muted/20 text-muted-foreground border-muted/30";
     }
-  }
+  };
 
   const formatDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleDateString()
-  }
+    return new Date(timestamp * 1000).toLocaleDateString();
+  };
 
   return (
     <Card className="glass-effect glow-border hover:animate-glow transition-all duration-300 group overflow-hidden">
@@ -80,8 +88,24 @@ export function ProjectCard({ project }: ProjectCardProps) {
             fill
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
-          <div className="absolute top-4 right-4">
-            <Badge className={cn("font-medium", getStatusColor(project.status))}>{project.status}</Badge>
+          <div className="absolute top-4 right-4 flex gap-2">
+            <Badge
+              className={cn("font-medium", getStatusColor(project.status))}
+            >
+              {project.status}
+            </Badge>
+            {project.fundingStatus && (
+              <Badge
+                className={cn(
+                  "font-medium text-xs",
+                  project.fundingStatus === "Funded"
+                    ? "bg-green-500/20 text-green-500 border-green-500/30"
+                    : "bg-orange-500/20 text-orange-500 border-orange-500/30"
+                )}
+              >
+                {project.fundingStatus}
+              </Badge>
+            )}
           </div>
           <div className="absolute bottom-4 left-4 flex items-center space-x-2">
             <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-primary/50">
@@ -94,7 +118,9 @@ export function ProjectCard({ project }: ProjectCardProps) {
               />
             </div>
             <div>
-              <h3 className="font-heading text-lg font-bold text-white">{project.name}</h3>
+              <h3 className="font-heading text-lg font-bold text-white">
+                {project.name}
+              </h3>
               <p className="text-sm text-gray-300">{project.symbol}</p>
             </div>
           </div>
@@ -102,7 +128,9 @@ export function ProjectCard({ project }: ProjectCardProps) {
       </CardHeader>
 
       <CardContent className="p-6 space-y-4">
-        <p className="text-muted-foreground text-sm line-clamp-2">{project.description}</p>
+        <p className="text-muted-foreground text-sm line-clamp-2">
+          {project.description}
+        </p>
 
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
@@ -128,7 +156,9 @@ export function ProjectCard({ project }: ProjectCardProps) {
           {project.totalRaised && (
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Raised:</span>
-              <span className="font-medium text-green-500">{project.totalRaised}</span>
+              <span className="font-medium text-green-500">
+                {project.totalRaised}
+              </span>
             </div>
           )}
         </div>
@@ -164,7 +194,9 @@ export function ProjectCard({ project }: ProjectCardProps) {
             {project.vestDuration && project.vestDuration > 0 && (
               <div className="flex justify-between">
                 <span>Vest Duration:</span>
-                <span>{Math.floor(project.vestDuration / (24 * 60 * 60))} days</span>
+                <span>
+                  {Math.floor(project.vestDuration / (24 * 60 * 60))} days
+                </span>
               </div>
             )}
           </div>
@@ -214,5 +246,5 @@ export function ProjectCard({ project }: ProjectCardProps) {
         </Link>
       </CardFooter>
     </Card>
-  )
+  );
 }

@@ -4,6 +4,11 @@ import { createPublicClient, http, formatUnits } from "viem";
 import { somniaTestnet } from "@/lib/web3/config/chains";
 import { SALE_POOL_ABI } from "@/lib/web3/abis/sale-pool";
 import { USDC_TOKEN_ABI } from "@/lib/web3/abis/usdc-token";
+import { SOMI_TOKEN_ABI } from "@/lib/web3/abis/somi-token";
+import {
+  BASE_TOKEN_ADDRESSES,
+  BASE_TOKEN_DECIMALS,
+} from "@/lib/web3/utils/token-resolver";
 
 // Create public client for reading contract data
 const publicClient = createPublicClient({
@@ -15,6 +20,7 @@ async function fetchContractData(saleAddress: string) {
   try {
     // Fetch contract data in parallel
     const [
+      saleToken,
       baseToken,
       priceNum,
       priceDen,
@@ -32,11 +38,17 @@ async function fetchContractData(saleAddress: string) {
       tier3CapBase,
       totalRaisedBase,
       totalTokensSold,
+      totalSaleTokensDeposited,
       status,
       finalized,
       successful,
       projectOwner,
     ] = await Promise.all([
+      publicClient.readContract({
+        address: saleAddress as `0x${string}`,
+        abi: SALE_POOL_ABI,
+        functionName: "saleToken",
+      }),
       publicClient.readContract({
         address: saleAddress as `0x${string}`,
         abi: SALE_POOL_ABI,
@@ -125,6 +137,11 @@ async function fetchContractData(saleAddress: string) {
       publicClient.readContract({
         address: saleAddress as `0x${string}`,
         abi: SALE_POOL_ABI,
+        functionName: "totalSaleTokensDeposited",
+      }),
+      publicClient.readContract({
+        address: saleAddress as `0x${string}`,
+        abi: SALE_POOL_ABI,
         functionName: "status",
       }),
       publicClient.readContract({
@@ -144,35 +161,69 @@ async function fetchContractData(saleAddress: string) {
       }),
     ]);
 
-    // Get base token symbol
+    // Get base token symbol and determine token type
     let baseTokenSymbol = "USDC";
+    let tokenDecimals = 6; // Default to USDC decimals
+
     try {
+      // Determine which ABI to use based on contract address
+      const isUSDC =
+        baseToken.toLowerCase() === BASE_TOKEN_ADDRESSES.USDC.toLowerCase();
+      const isSOMI =
+        baseToken.toLowerCase() === BASE_TOKEN_ADDRESSES.SOMI.toLowerCase();
+
+      const abi = isUSDC
+        ? USDC_TOKEN_ABI
+        : isSOMI
+        ? SOMI_TOKEN_ABI
+        : USDC_TOKEN_ABI;
+      const tokenType = isUSDC ? "USDC" : isSOMI ? "SOMI" : "USDC";
+
       const symbol = await publicClient.readContract({
         address: baseToken as `0x${string}`,
-        abi: USDC_TOKEN_ABI,
+        abi: abi,
         functionName: "symbol",
       });
       baseTokenSymbol = symbol as string;
+      tokenDecimals =
+        BASE_TOKEN_DECIMALS[tokenType as keyof typeof BASE_TOKEN_DECIMALS];
     } catch (error) {
       console.warn("Could not fetch base token symbol:", error);
     }
 
     // Calculate derived values
-    const price =
+    const tokensPerBase =
       Number(priceDen) > 0 ? Number(priceNum) / Number(priceDen) : 0;
     const priceDisplay =
-      price > 0 ? `${price.toFixed(6)} ${baseTokenSymbol}` : "TBD";
+      tokensPerBase > 0
+        ? `1 ${baseTokenSymbol} = ${tokensPerBase.toFixed(2)} tokens`
+        : "TBD";
 
-    const hardCapDisplay = formatUnits(hardCapBase as bigint, 6);
-    const softCapDisplay = formatUnits(softCapBase as bigint, 6);
-    const totalRaisedDisplay = formatUnits(totalRaisedBase as bigint, 6);
+    const hardCapDisplay = formatUnits(hardCapBase as bigint, tokenDecimals);
+    const softCapDisplay = formatUnits(softCapBase as bigint, tokenDecimals);
+    const totalRaisedDisplay = formatUnits(
+      totalRaisedBase as bigint,
+      tokenDecimals
+    );
 
     const raisedPct =
       Number(hardCapBase) > 0
         ? (Number(totalRaisedBase) / Number(hardCapBase)) * 100
         : 0;
 
-    // Determine status
+    // Get required deposit tokens to check if funded
+    const [requiredDeposit] = await Promise.all([
+      publicClient.readContract({
+        address: saleAddress as `0x${string}`,
+        abi: SALE_POOL_ABI,
+        functionName: "requiredDepositTokens",
+      }),
+    ]);
+
+    const requiredTokens = requiredDeposit[2] as bigint; // totalRequired is the third return value
+    const isFunded = (totalSaleTokensDeposited as bigint) >= requiredTokens;
+
+    // Determine status (separate sale status and funding status)
     const now = Math.floor(Date.now() / 1000);
     let saleStatus = "Draft";
 
@@ -195,15 +246,15 @@ async function fetchContractData(saleAddress: string) {
       tgeBps: Number(tgeBps),
       vestStart: Number(vestStart),
       vestDuration: Number(vestDuration),
-      hardCap: Number(hardCapBase) / 1e6,
-      softCap: Number(softCapBase) / 1e6,
-      perWalletCap: Number(perWalletCapBase) / 1e6,
+      hardCap: Number(hardCapBase) / 10 ** tokenDecimals,
+      softCap: Number(softCapBase) / 10 ** tokenDecimals,
+      perWalletCap: Number(perWalletCapBase) / 10 ** tokenDecimals,
       tierCaps: {
-        T1: Number(tier1CapBase) / 1e6,
-        T2: Number(tier2CapBase) / 1e6,
-        T3: Number(tier3CapBase) / 1e6,
+        T1: Number(tier1CapBase) / 10 ** tokenDecimals,
+        T2: Number(tier2CapBase) / 10 ** tokenDecimals,
+        T3: Number(tier3CapBase) / 10 ** tokenDecimals,
       },
-      raised: Number(totalRaisedBase) / 1e6,
+      raised: Number(totalRaisedBase) / 10 ** tokenDecimals,
       tokensSold: Number(totalTokensSold) / 1e18, // Assuming 18 decimals for sale token
       raisedPct: Math.min(raisedPct, 100),
       status: saleStatus,
@@ -213,6 +264,12 @@ async function fetchContractData(saleAddress: string) {
       hardCapDisplay: `${hardCapDisplay} ${baseTokenSymbol}`,
       softCapDisplay: `${softCapDisplay} ${baseTokenSymbol}`,
       totalRaisedDisplay: `${totalRaisedDisplay} ${baseTokenSymbol}`,
+      tokenDecimals,
+      isFunded,
+      fundingStatus: isFunded ? "Funded" : "Unfunded",
+      totalSaleTokensDeposited: Number(totalSaleTokensDeposited),
+      requiredTokens: Number(requiredTokens),
+      saleTokenAddress: saleToken as string,
     };
   } catch (error) {
     console.error("Error fetching contract data:", error);
@@ -267,10 +324,12 @@ export async function GET(
         },
         start: contractData?.start || 0,
         end: contractData?.end || 0,
+        fundingStatus: contractData?.fundingStatus,
         tgeTime: contractData?.tgeTime || 0,
         tgeBps: contractData?.tgeBps || 0,
         vestDuration: contractData?.vestDuration || 0,
         vestStart: contractData?.vestStart || 0,
+        projectOwner: contractData?.projectOwner || "",
       },
       stats: {
         raised: contractData?.raised || 0,

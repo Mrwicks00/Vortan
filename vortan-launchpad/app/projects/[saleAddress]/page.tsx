@@ -1,90 +1,99 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useParams } from "next/navigation"
-import { MainLayout } from "@/components/layout/main-layout"
-import { ProjectHeader } from "@/components/projects/project-header"
-import { SalePanel } from "@/components/projects/sale-panel"
-import { ClaimsPanel } from "@/components/projects/claims-panel"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, FileText, Shield } from "lucide-react"
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import { MainLayout } from "@/components/layout/main-layout";
+import { ProjectHeader } from "@/components/projects/project-header";
+import { SalePanel } from "@/components/projects/sale-panel";
+import { ClaimsPanel } from "@/components/projects/claims-panel";
+import { UserTierDisplay } from "@/components/projects/user-tier-display";
+import { TokenDepositForm } from "@/components/admin/token-deposit-form";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { AlertTriangle, FileText, Shield } from "lucide-react";
 
 interface ProjectDetail {
-  saleAddress: string
+  saleAddress: string;
   meta: {
-    name: string
-    symbol: string
-    bannerUrl: string
-    logoUrl: string
-    description: string
-    longDescription: string
-    website: string
+    name: string;
+    symbol: string;
+    bannerUrl: string;
+    logoUrl: string;
+    description: string;
+    longDescription: string;
+    website: string;
     socials: {
-      x: string
-      discord: string
-      medium: string
-    }
-  }
+      x: string;
+      discord: string;
+      medium: string;
+    };
+  };
   sale: {
-    baseToken: string
-    priceDisplay: string
-    hardCap: number
-    softCap: number
-    perWalletCap: number
+    baseToken: string;
+    priceDisplay: string;
+    hardCap: number;
+    softCap: number;
+    perWalletCap: number;
     tierCaps: {
-      T1: number
-      T2: number
-      T3: number
-    }
-    start: number
-    end: number
-    tgeTime: number
-    tgeBps: number
-    vestDuration: number
-  }
+      T1: number;
+      T2: number;
+      T3: number;
+    };
+    start: number;
+    end: number;
+    fundingStatus?: "Funded" | "Unfunded";
+    tgeTime: number;
+    tgeBps: number;
+    vestDuration: number;
+    projectOwner?: string;
+  };
   stats: {
-    raised: number
-    buyers: number
-    tokensSold: number
-  }
+    raised: number;
+    buyers: number;
+    tokensSold: number;
+  };
 }
 
 export default function ProjectDetailPage() {
-  const params = useParams()
-  const saleAddress = params.saleAddress as string
-  const [project, setProject] = useState<ProjectDetail | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const params = useParams();
+  const saleAddress = params.saleAddress as string;
+  const [project, setProject] = useState<ProjectDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProject = async () => {
       try {
-        const response = await fetch(`/api/project/${saleAddress}`)
+        const response = await fetch(`/api/project/${saleAddress}`);
         if (!response.ok) {
-          throw new Error("Project not found")
+          throw new Error("Project not found");
         }
-        const data = await response.json()
-        setProject(data)
+        const data = await response.json();
+        setProject(data);
       } catch (error) {
-        setError(error instanceof Error ? error.message : "Failed to fetch project")
+        setError(
+          error instanceof Error ? error.message : "Failed to fetch project"
+        );
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
     if (saleAddress) {
-      fetchProject()
+      fetchProject();
     }
-  }, [saleAddress])
+  }, [saleAddress]);
 
-  const getStatus = (start: number, end: number): "Live" | "Upcoming" | "Ended" => {
-    const now = Math.floor(Date.now() / 1000)
-    if (now < start) return "Upcoming"
-    if (now > end) return "Ended"
-    return "Live"
-  }
+  const getStatus = (
+    start: number,
+    end: number
+  ): "Live" | "Upcoming" | "Ended" => {
+    const now = Math.floor(Date.now() / 1000);
+    if (now < start) return "Upcoming";
+    if (now > end) return "Ended";
+    return "Live";
+  };
 
   if (loading) {
     return (
@@ -107,7 +116,7 @@ export default function ProjectDetailPage() {
           </div>
         </div>
       </MainLayout>
-    )
+    );
   }
 
   if (error || !project) {
@@ -116,15 +125,19 @@ export default function ProjectDetailPage() {
         <div className="text-center py-12">
           <div className="glass-effect glow-border rounded-lg p-12 max-w-md mx-auto">
             <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
-            <h3 className="font-heading text-xl font-semibold text-destructive mb-2">Project Not Found</h3>
-            <p className="text-muted-foreground">{error || "The requested project could not be found."}</p>
+            <h3 className="font-heading text-xl font-semibold text-destructive mb-2">
+              Project Not Found
+            </h3>
+            <p className="text-muted-foreground">
+              {error || "The requested project could not be found."}
+            </p>
           </div>
         </div>
       </MainLayout>
-    )
+    );
   }
 
-  const status = getStatus(project.sale.start, project.sale.end)
+  const status = getStatus(project.sale.start, project.sale.end);
 
   return (
     <MainLayout>
@@ -145,7 +158,9 @@ export default function ProjectDetailPage() {
               <CardContent className="space-y-4">
                 <div>
                   <h4 className="font-semibold mb-2">Project Overview</h4>
-                  <p className="text-muted-foreground leading-relaxed">{project.meta.longDescription}</p>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {project.meta.longDescription}
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
@@ -181,24 +196,27 @@ export default function ProjectDetailPage() {
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-muted-foreground">
                 <p>
-                  <strong>Investment Risk:</strong> Token purchases involve significant risk and may result in partial
-                  or total loss of funds.
+                  <strong>Investment Risk:</strong> Token purchases involve
+                  significant risk and may result in partial or total loss of
+                  funds.
                 </p>
                 <p>
-                  <strong>Regulatory Risk:</strong> Cryptocurrency regulations vary by jurisdiction and may change,
-                  affecting token utility and value.
+                  <strong>Regulatory Risk:</strong> Cryptocurrency regulations
+                  vary by jurisdiction and may change, affecting token utility
+                  and value.
                 </p>
                 <p>
-                  <strong>Technology Risk:</strong> Smart contracts and blockchain technology carry inherent technical
-                  risks including bugs and vulnerabilities.
+                  <strong>Technology Risk:</strong> Smart contracts and
+                  blockchain technology carry inherent technical risks including
+                  bugs and vulnerabilities.
                 </p>
                 <p>
-                  <strong>Market Risk:</strong> Token values are highly volatile and may fluctuate significantly based
-                  on market conditions.
+                  <strong>Market Risk:</strong> Token values are highly volatile
+                  and may fluctuate significantly based on market conditions.
                 </p>
                 <p className="font-medium text-destructive">
-                  Please conduct your own research and consider your risk tolerance before participating in any token
-                  sale.
+                  Please conduct your own research and consider your risk
+                  tolerance before participating in any token sale.
                 </p>
               </CardContent>
             </Card>
@@ -206,11 +224,30 @@ export default function ProjectDetailPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            <SalePanel sale={project.sale} stats={project.stats} status={status} />
-            <ClaimsPanel sale={project.sale} />
+            <UserTierDisplay
+              saleAddress={saleAddress}
+              tierCaps={project.sale.tierCaps}
+            />
+
+            {/* Token Deposit Form - Show for unfunded projects */}
+            {project.sale.fundingStatus === "Unfunded" && (
+              <TokenDepositForm
+                saleAddress={saleAddress}
+                saleTokenAddress={project.sale.saleTokenAddress || ""}
+                projectOwner={project.sale.projectOwner || ""}
+              />
+            )}
+
+            <SalePanel
+              saleAddress={saleAddress}
+              sale={project.sale}
+              stats={project.stats}
+              status={status}
+            />
+            <ClaimsPanel saleAddress={saleAddress} sale={project.sale} />
           </div>
         </div>
       </div>
     </MainLayout>
-  )
+  );
 }
