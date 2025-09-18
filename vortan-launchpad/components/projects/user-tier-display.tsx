@@ -19,10 +19,14 @@ interface UserTierDisplayProps {
   };
 }
 
-export function UserTierDisplay({ saleAddress, tierCaps }: UserTierDisplayProps) {
+export function UserTierDisplay({
+  saleAddress,
+  tierCaps,
+}: UserTierDisplayProps) {
   const { isConnected, address } = useAccount();
   const { combinedData, isLoading } = useDualStaking();
-  const { userInfo: saleUserInfo, isLoading: isUserInfoLoading } = useSalePoolUser(saleAddress);
+  const { userInfo: saleUserInfo, isLoading: isUserInfoLoading } =
+    useSalePoolUser(saleAddress);
 
   // Calculate user tier using the same logic as staking page
   const userTierData = useMemo(() => {
@@ -41,7 +45,7 @@ export function UserTierDisplay({ saleAddress, tierCaps }: UserTierDisplayProps)
     const t1 = 1000;
     const t2 = 5000;
     const t3 = 20000;
-    
+
     const combinedPoints =
       parseFloat(combinedData.vort.userTotalPoints || "0") +
       parseFloat(combinedData.somi.userTotalPoints || "0") * 0.8;
@@ -49,7 +53,8 @@ export function UserTierDisplay({ saleAddress, tierCaps }: UserTierDisplayProps)
     let tier = 0;
     let tierName = "No Tier";
     let tierIcon = null;
-    let tierColor: "default" | "secondary" | "destructive" | "outline" = "default";
+    let tierColor: "default" | "secondary" | "destructive" | "outline" =
+      "default";
     let maxAllocation = 0;
 
     if (combinedPoints >= t3) {
@@ -86,30 +91,38 @@ export function UserTierDisplay({ saleAddress, tierCaps }: UserTierDisplayProps)
   // Calculate progress to next tier
   const progressToNextTier = useMemo(() => {
     if (userTierData.tier === 3) return 100; // Max tier reached
-    
-    const nextThreshold = userTierData.tier === 0 
-      ? userTierData.tierThresholds.t1
-      : userTierData.tier === 1 
-      ? userTierData.tierThresholds.t2
-      : userTierData.tierThresholds.t3;
-    
-    const currentThreshold = userTierData.tier === 0 
-      ? 0 
-      : userTierData.tier === 1 
-      ? userTierData.tierThresholds.t1
-      : userTierData.tierThresholds.t2;
-    
-    const progress = ((userTierData.combinedPoints - currentThreshold) / (nextThreshold - currentThreshold)) * 100;
+
+    const nextThreshold =
+      userTierData.tier === 0
+        ? userTierData.tierThresholds.t1
+        : userTierData.tier === 1
+        ? userTierData.tierThresholds.t2
+        : userTierData.tierThresholds.t3;
+
+    const currentThreshold =
+      userTierData.tier === 0
+        ? 0
+        : userTierData.tier === 1
+        ? userTierData.tierThresholds.t1
+        : userTierData.tierThresholds.t2;
+
+    const progress =
+      ((userTierData.combinedPoints - currentThreshold) /
+        (nextThreshold - currentThreshold)) *
+      100;
     return Math.max(0, Math.min(100, progress));
   }, [userTierData]);
 
   // Get user's current allocation from contract
-  const userAllocation = saleUserInfo ? parseFloat(saleUserInfo.purchasedTokens) : 0;
-  
-  // Calculate allocation progress
-  const allocationProgress = userTierData.maxAllocation > 0 
-    ? (userAllocation / userTierData.maxAllocation) * 100 
+  const userAllocation = saleUserInfo
+    ? parseFloat(saleUserInfo.purchasedTokens)
     : 0;
+
+  // Calculate allocation progress
+  const allocationProgress =
+    userTierData.maxAllocation > 0
+      ? (userAllocation / userTierData.maxAllocation) * 100
+      : 0;
 
   if (!isConnected) {
     return (
@@ -163,7 +176,10 @@ export function UserTierDisplay({ saleAddress, tierCaps }: UserTierDisplayProps)
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <span className="text-sm text-muted-foreground">Current Tier:</span>
-            <Badge variant={userTierData.tierColor} className="flex items-center space-x-1">
+            <Badge
+              variant={userTierData.tierColor}
+              className="flex items-center space-x-1"
+            >
               {userTierData.tierIcon}
               <span>{userTierData.tierName}</span>
             </Badge>
@@ -183,9 +199,17 @@ export function UserTierDisplay({ saleAddress, tierCaps }: UserTierDisplayProps)
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">
-                Progress to {userTierData.tier === 0 ? "T1" : userTierData.tier === 1 ? "T2" : "T3"}:
+                Progress to{" "}
+                {userTierData.tier === 0
+                  ? "T1"
+                  : userTierData.tier === 1
+                  ? "T2"
+                  : "T3"}
+                :
               </span>
-              <span className="font-medium">{progressToNextTier.toFixed(1)}%</span>
+              <span className="font-medium">
+                {progressToNextTier.toFixed(1)}%
+              </span>
             </div>
             <Progress value={progressToNextTier} className="h-2" />
           </div>
@@ -196,19 +220,19 @@ export function UserTierDisplay({ saleAddress, tierCaps }: UserTierDisplayProps)
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Max Allocation:</span>
             <span className="text-sm font-bold text-primary">
-              {userTierData.maxAllocation > 0 
-                ? `${userTierData.maxAllocation.toLocaleString()} tokens`
-                : "No allocation"
-              }
+              {userTierData.maxAllocation > 0
+                ? `${userTierData.maxAllocation.toLocaleString()} USDC`
+                : "No allocation"}
             </span>
           </div>
-          
+
           {userTierData.maxAllocation > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Used:</span>
                 <span className="font-medium">
-                  {userAllocation.toLocaleString()} / {userTierData.maxAllocation.toLocaleString()}
+                  {userAllocation.toLocaleString()} /{" "}
+                  {userTierData.maxAllocation.toLocaleString()}
                 </span>
               </div>
               <Progress value={allocationProgress} className="h-2" />
@@ -223,12 +247,16 @@ export function UserTierDisplay({ saleAddress, tierCaps }: UserTierDisplayProps)
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Purchased:</span>
                 <span className="font-medium">
-                  {parseFloat(saleUserInfo.purchasedTokens).toLocaleString()} tokens
+                  {parseFloat(saleUserInfo.purchasedTokens).toLocaleString()}{" "}
+                  tokens
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">TGE Claimed:</span>
-                <Badge variant={saleUserInfo.tgeClaimed ? "default" : "outline"} className="text-xs">
+                <Badge
+                  variant={saleUserInfo.tgeClaimed ? "default" : "outline"}
+                  className="text-xs"
+                >
                   {saleUserInfo.tgeClaimed ? "Yes" : "No"}
                 </Badge>
               </div>
@@ -240,7 +268,9 @@ export function UserTierDisplay({ saleAddress, tierCaps }: UserTierDisplayProps)
         <div className="pt-2 border-t border-border/50">
           <div className="text-xs text-muted-foreground space-y-1">
             {userTierData.tier === 0 && (
-              <p>Stake VORT/SOMI to unlock tier benefits and higher allocations</p>
+              <p>
+                Stake VORT/SOMI to unlock tier benefits and higher allocations
+              </p>
             )}
             {userTierData.tier === 1 && (
               <p>✓ T1 allocation access • Stake more to reach T2</p>

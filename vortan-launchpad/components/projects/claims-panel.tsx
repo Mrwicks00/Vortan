@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Gift, Clock, Percent, Wallet } from "lucide-react";
 import { toast } from "react-toastify";
+import { formatUnits } from "viem";
 import { SALE_POOL_ABI } from "@/lib/web3/abis/sale-pool";
 
 interface ClaimsPanelProps {
@@ -42,26 +43,10 @@ export function ClaimsPanel({ saleAddress, sale }: ClaimsPanelProps) {
 
   const { isLoading: isTgeTxLoading } = useWaitForTransactionReceipt({
     hash: tgeTxHash,
-    onSuccess: () => {
-      toast.success("TGE tokens claimed successfully!");
-      setTgeTxHash(undefined);
-    },
-    onError: (error) => {
-      toast.error(`Failed to claim TGE: ${error.message}`);
-      setTgeTxHash(undefined);
-    },
   });
 
   const { isLoading: isVestedTxLoading } = useWaitForTransactionReceipt({
     hash: vestedTxHash,
-    onSuccess: () => {
-      toast.success("Vested tokens claimed successfully!");
-      setVestedTxHash(undefined);
-    },
-    onError: (error) => {
-      toast.error(`Failed to claim vested tokens: ${error.message}`);
-      setVestedTxHash(undefined);
-    },
   });
 
   // Get user purchase data from contract
@@ -97,12 +82,12 @@ export function ClaimsPanel({ saleAddress, sale }: ClaimsPanelProps) {
 
     try {
       toast.info("Claiming TGE tokens...");
-      const hash = await writeClaimTGE({
+      writeClaimTGE({
         address: saleAddress as `0x${string}`,
         abi: SALE_POOL_ABI,
         functionName: "claimTGE",
       });
-      setTgeTxHash(hash);
+      toast.success("TGE tokens claimed successfully!");
     } catch (error) {
       toast.error(
         `Failed to claim TGE: ${
@@ -120,12 +105,12 @@ export function ClaimsPanel({ saleAddress, sale }: ClaimsPanelProps) {
 
     try {
       toast.info("Claiming vested tokens...");
-      const hash = await writeClaimVested({
+      writeClaimVested({
         address: saleAddress as `0x${string}`,
         abi: SALE_POOL_ABI,
         functionName: "claimVested",
       });
-      setVestedTxHash(hash);
+      toast.success("Vested tokens claimed successfully!");
     } catch (error) {
       toast.error(
         `Failed to claim vested tokens: ${

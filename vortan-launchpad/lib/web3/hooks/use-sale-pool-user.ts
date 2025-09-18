@@ -15,7 +15,12 @@ export function useSalePoolUser(saleAddress?: string) {
   const { address } = useAccount();
 
   // Fetch user info from the sale pool contract
-  const { data: userInfo, isLoading, error, refetch } = useReadContract({
+  const {
+    data: userInfo,
+    isLoading,
+    error,
+    refetch,
+  } = useReadContract({
     address: saleAddress as `0x${string}`,
     abi: SALE_POOL_ABI,
     functionName: "userInfo",
@@ -26,12 +31,14 @@ export function useSalePoolUser(saleAddress?: string) {
   });
 
   // Transform the data to a more usable format
-  const transformedData: UserSaleInfo | null = userInfo ? {
-    purchasedBase: userInfo[0]?.toString() || "0",
-    purchasedTokens: userInfo[1]?.toString() || "0",
-    tgeClaimed: userInfo[2] || false,
-    vestedClaimed: userInfo[3]?.toString() || "0",
-  } : null;
+  const transformedData: UserSaleInfo | null = userInfo
+    ? {
+        purchasedBase: userInfo[0]?.toString() || "0",
+        purchasedTokens: userInfo[1]?.toString() || "0",
+        tgeClaimed: userInfo[2] || false,
+        vestedClaimed: userInfo[3]?.toString() || "0",
+      }
+    : null;
 
   return {
     userInfo: transformedData,

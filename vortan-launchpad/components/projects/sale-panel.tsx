@@ -20,7 +20,7 @@ import { toast } from "react-toastify";
 import { SALE_POOL_ABI } from "@/lib/web3/abis/sale-pool";
 import { USDC_TOKEN_ABI } from "@/lib/web3/abis/usdc-token";
 import { SOMI_TOKEN_ABI } from "@/lib/web3/abis/somi-token";
-import { parseEther, formatEther, parseUnits } from "viem";
+import { parseEther, formatEther, parseUnits, formatUnits } from "viem";
 import {
   BASE_TOKEN_ADDRESSES,
   BASE_TOKEN_DECIMALS,
@@ -45,6 +45,7 @@ interface SalePanelProps {
     tgeTime: number;
     tgeBps: number;
     vestDuration: number;
+    saleTokenSymbol?: string;
   };
   stats: {
     raised: number;
@@ -52,6 +53,17 @@ interface SalePanelProps {
     tokensSold: number;
   };
   status: "Live" | "Upcoming" | "Unfunded" | "Ended";
+}
+
+// Helper function to extract token multiplier from price display
+function getTokenMultiplier(priceDisplay: string): number {
+  // Extract from priceDisplay like "1 USDC = 50 tokens"
+  try {
+    const match = priceDisplay.match(/=\s*(\d+)/);
+    return match ? parseInt(match[1]) : 50; // Default fallback
+  } catch {
+    return 50; // Default fallback
+  }
 }
 
 export function SalePanel({
@@ -62,7 +74,7 @@ export function SalePanel({
 }: SalePanelProps) {
   const { isConnected, address } = useAccount();
   const { combinedData } = useDualStaking();
-  const { userInfo } = useSalePoolUser(saleAddress);
+  const { userInfo, refetch: refetchUserInfo } = useSalePoolUser(saleAddress);
 
   const [amount, setAmount] = useState("");
   const [approveTxHash, setApproveTxHash] = useState<
@@ -79,26 +91,10 @@ export function SalePanel({
   // Transaction receipts
   const { isLoading: isApproveTxLoading } = useWaitForTransactionReceipt({
     hash: approveTxHash,
-    onSuccess: () => {
-      toast.success(`${baseTokenInfo.tokenType} approved successfully!`);
-      setApproveTxHash(undefined);
-    },
-    onError: (error) => {
-      toast.error(`Approval failed: ${error.message}`);
-      setApproveTxHash(undefined);
-    },
   });
 
   const { isLoading: isBuyTxLoading } = useWaitForTransactionReceipt({
     hash: buyTxHash,
-    onSuccess: () => {
-      toast.success("Tokens purchased successfully!");
-      setBuyTxHash(undefined);
-    },
-    onError: (error) => {
-      toast.error(`Purchase failed: ${error.message}`);
-      setBuyTxHash(undefined);
-    },
   });
 
   // Determine base token type and get appropriate ABI and decimals
@@ -115,7 +111,7 @@ export function SalePanel({
   const baseTokenAddress = baseTokenInfo.tokenAddress;
 
   // Check base token allowance
-  const { data: allowance } = useReadContract({
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: baseTokenAddress as `0x${string}`,
     abi: baseTokenInfo.abi,
     functionName: "allowance",
@@ -165,13 +161,22 @@ export function SalePanel({
 
   // Calculate user's current allocation usage
   const userPurchased = userInfo ? parseFloat(userInfo.purchasedBase) : 0;
+  const userPurchasedTokens = userInfo
+    ? parseFloat(userInfo.purchasedTokens)
+    : 0;
   const remainingAllocation = Math.max(
     0,
     userTierData.maxAllocation - userPurchased
   );
 
+  // Check if user has used their full allocation
+  const hasUsedFullAllocation =
+    remainingAllocation <= 0 && userTierData.maxAllocation > 0;
+
   // Check if user has sufficient allowance
-  const amountWei = amount ? parseUnits(amount, baseTokenInfo.decimals) : 0n;
+  const amountWei = amount
+    ? parseUnits(amount, baseTokenInfo.decimals)
+    : BigInt(0);
   const hasAllowance = allowance ? allowance >= amountWei : false;
 
   // Check if user has sufficient balance
@@ -205,7 +210,7 @@ export function SalePanel({
 
     try {
       toast.info(`Approving ${baseTokenInfo.tokenType}...`);
-      const hash = await writeApprove({
+      writeApprove({
         address: baseTokenAddress as `0x${string}`,
         abi: baseTokenInfo.abi,
         functionName: "approve",
@@ -214,7 +219,8 @@ export function SalePanel({
           parseUnits(amount, baseTokenInfo.decimals),
         ],
       });
-      setApproveTxHash(hash);
+      toast.success(`${baseTokenInfo.tokenType} approved successfully!`);
+      refetchAllowance();
     } catch (error) {
       toast.error(
         `Approval failed: ${
@@ -244,7 +250,7 @@ export function SalePanel({
 
     if (amountNum > remainingAllocation) {
       toast.error(
-        `Amount exceeds your tier allocation. Max: ${remainingAllocation} ${baseTokenInfo.tokenType}`
+        `Amount exceeds your tier allocation. Max: ${remainingAllocation} ${sale.baseToken}`
       );
       return;
     }
@@ -258,13 +264,16 @@ export function SalePanel({
 
     try {
       toast.info("Purchasing tokens...");
-      const hash = await writeBuy({
+      writeBuy({
         address: saleAddress as `0x${string}`,
         abi: SALE_POOL_ABI,
         functionName: "buy",
         args: [parseUnits(amount, baseTokenInfo.decimals)],
       });
-      setBuyTxHash(hash);
+      toast.success("Tokens purchased successfully!");
+      setAmount("");
+      refetchUserInfo();
+      refetchAllowance();
     } catch (error) {
       toast.error(
         `Purchase failed: ${
@@ -407,15 +416,38 @@ export function SalePanel({
                 <span className="font-medium">
                   {userTierData.maxAllocation > 0
                     ? `${formatNumber(userTierData.maxAllocation)} ${
-                        baseTokenInfo.tokenType
+                        sale.baseToken
                       }`
                     : "No allocation"}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Used:</span>
+                <span className="font-medium">
+                  {formatNumber(userPurchased)} /{" "}
+                  {formatNumber(userTierData.maxAllocation)} {sale.baseToken}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Purchased:</span>
+                <span className="font-medium text-primary">
+                  {formatNumber(userPurchasedTokens)}{" "}
+                  {sale.saleTokenSymbol || "tokens"}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Remaining:</span>
                 <span className="font-medium">
-                  {formatNumber(remainingAllocation)} {baseTokenInfo.tokenType}
+                  {formatNumber(remainingAllocation)} {sale.baseToken}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Tokens Out:</span>
+                <span className="font-medium text-primary">
+                  {formatNumber(
+                    remainingAllocation * getTokenMultiplier(sale.priceDisplay)
+                  )}{" "}
+                  {sale.saleTokenSymbol || "tokens"}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
@@ -424,7 +456,7 @@ export function SalePanel({
                   {balance
                     ? `${formatNumber(
                         parseFloat(
-                          formatEther(balance as bigint, baseTokenInfo.decimals)
+                          formatUnits(balance as bigint, baseTokenInfo.decimals)
                         )
                       )} ${baseTokenInfo.tokenType}`
                     : "Loading..."}
@@ -432,31 +464,83 @@ export function SalePanel({
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Amount ({sale.baseToken})
-              </label>
-              <Input
-                type="number"
-                placeholder={`Enter ${sale.baseToken} amount`}
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="bg-input/50 border-border/50 focus:border-primary/50"
-              />
-              <div className="space-y-1 text-xs text-muted-foreground">
-                <p>
-                  Max per wallet: {formatNumber(sale.perWalletCap)}{" "}
-                  {sale.baseToken}
-                </p>
-                <p>
-                  Your remaining allocation: {formatNumber(remainingAllocation)}{" "}
-                  {sale.baseToken}
+            {hasUsedFullAllocation ? (
+              // Show allocation summary when user has used full allocation
+              <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 space-y-3">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-primary rounded-full"></div>
+                  <h3 className="font-semibold text-primary">
+                    Allocation Bought
+                  </h3>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Total Purchased:
+                    </span>
+                    <span className="font-semibold text-lg">
+                      {formatNumber(userPurchased)} {sale.baseToken}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Tokens You'll Get:
+                    </span>
+                    <span className="font-semibold text-lg text-primary">
+                      {formatNumber(userPurchasedTokens)}{" "}
+                      {sale.saleTokenSymbol || "tokens"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Tier:</span>
+                    <Badge variant="default" className="font-medium">
+                      T{userTierData.tier}
+                    </Badge>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  You've used your full allocation. Check the Token Claims
+                  section below to claim your tokens.
                 </p>
               </div>
-            </div>
+            ) : (
+              // Show buy form when user still has allocation remaining
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Amount ({sale.baseToken})
+                </label>
+                <Input
+                  type="number"
+                  placeholder={`Enter ${sale.baseToken} amount`}
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="bg-input/50 border-border/50 focus:border-primary/50"
+                />
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  <p>
+                    Max per wallet: {formatNumber(sale.perWalletCap)}{" "}
+                    {sale.baseToken}
+                  </p>
+                  <p>
+                    Your remaining allocation:{" "}
+                    {formatNumber(remainingAllocation)} {sale.baseToken}
+                  </p>
+                  {amount && parseFloat(amount) > 0 && (
+                    <p className="text-primary font-medium">
+                      You'll receive:{" "}
+                      {formatNumber(
+                        parseFloat(amount) *
+                          getTokenMultiplier(sale.priceDisplay)
+                      )}{" "}
+                      {sale.saleTokenSymbol || "tokens"}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Validation Messages */}
-            {amount && parseFloat(amount) > 0 && (
+            {!hasUsedFullAllocation && amount && parseFloat(amount) > 0 && (
               <div className="space-y-1">
                 {!hasBalance && (
                   <div className="flex items-center space-x-2 text-destructive text-sm">
@@ -479,43 +563,45 @@ export function SalePanel({
               </div>
             )}
 
-            <div className="space-y-2">
-              {!hasAllowance ? (
-                <Button
-                  onClick={handleApprove}
-                  className="w-full bg-accent hover:bg-accent/80 text-accent-foreground"
-                  disabled={
-                    !amount ||
-                    Number.parseFloat(amount) <= 0 ||
-                    isApprovePending ||
-                    isApproveTxLoading
-                  }
-                >
-                  <Wallet className="h-4 w-4 mr-2" />
-                  {isApprovePending || isApproveTxLoading
-                    ? "Approving..."
-                    : `Approve ${sale.baseToken}`}
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleBuy}
-                  className="w-full bg-gradient-to-r from-primary to-secondary hover:from-primary/80 hover:to-secondary/80 animate-glow"
-                  disabled={
-                    !amount ||
-                    Number.parseFloat(amount) <= 0 ||
-                    !hasBalance ||
-                    parseFloat(amount) > remainingAllocation ||
-                    parseFloat(amount) > sale.perWalletCap ||
-                    isBuyPending ||
-                    isBuyTxLoading
-                  }
-                >
-                  {isBuyPending || isBuyTxLoading
-                    ? "Purchasing..."
-                    : "Buy Tokens"}
-                </Button>
-              )}
-            </div>
+            {!hasUsedFullAllocation && (
+              <div className="space-y-2">
+                {!hasAllowance ? (
+                  <Button
+                    onClick={handleApprove}
+                    className="w-full bg-accent hover:bg-accent/80 text-accent-foreground"
+                    disabled={
+                      !amount ||
+                      Number.parseFloat(amount) <= 0 ||
+                      isApprovePending ||
+                      isApproveTxLoading
+                    }
+                  >
+                    <Wallet className="h-4 w-4 mr-2" />
+                    {isApprovePending || isApproveTxLoading
+                      ? "Approving..."
+                      : `Approve ${sale.baseToken}`}
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleBuy}
+                    className="w-full bg-gradient-to-r from-primary to-secondary hover:from-primary/80 hover:to-secondary/80 animate-glow"
+                    disabled={
+                      !amount ||
+                      Number.parseFloat(amount) <= 0 ||
+                      !hasBalance ||
+                      parseFloat(amount) > remainingAllocation ||
+                      parseFloat(amount) > sale.perWalletCap ||
+                      isBuyPending ||
+                      isBuyTxLoading
+                    }
+                  >
+                    {isBuyPending || isBuyTxLoading
+                      ? "Purchasing..."
+                      : "Buy Tokens"}
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         ) : status === "Unfunded" ? (
           <div className="text-center py-4">

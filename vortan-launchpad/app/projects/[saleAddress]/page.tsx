@@ -15,6 +15,7 @@ import { AlertTriangle, FileText, Shield } from "lucide-react";
 
 interface ProjectDetail {
   saleAddress: string;
+  saleTokenAddress?: string;
   meta: {
     name: string;
     symbol: string;
@@ -43,6 +44,8 @@ interface ProjectDetail {
     start: number;
     end: number;
     fundingStatus?: "Funded" | "Unfunded";
+    totalSaleTokensDeposited?: number;
+    requiredTokens?: number;
     tgeTime: number;
     tgeBps: number;
     vestDuration: number;
@@ -142,7 +145,11 @@ export default function ProjectDetailPage() {
   return (
     <MainLayout>
       <div className="space-y-6">
-        <ProjectHeader project={project.meta} status={status} />
+        <ProjectHeader
+          project={project.meta}
+          status={status}
+          fundingStatus={project.sale.fundingStatus}
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
@@ -163,24 +170,47 @@ export default function ProjectDetailPage() {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                  <div className="space-y-2">
-                    <h5 className="font-medium">Key Features</h5>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• Decentralized governance</li>
-                      <li>• Cross-chain compatibility</li>
-                      <li>• Advanced tokenomics</li>
-                      <li>• Community-driven development</li>
-                    </ul>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-6">
+                  <div className="text-center space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      Token Amount
+                    </p>
+                    <p className="text-2xl font-bold text-primary">
+                      {(
+                        (project.sale.requiredTokens || 0) / 1e18
+                      ).toLocaleString()}
+                    </p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {project.meta.symbol}
+                    </p>
                   </div>
-                  <div className="space-y-2">
-                    <h5 className="font-medium">Technology Stack</h5>
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="outline">Solidity</Badge>
-                      <Badge variant="outline">React</Badge>
-                      <Badge variant="outline">IPFS</Badge>
-                      <Badge variant="outline">The Graph</Badge>
-                    </div>
+                  <div className="text-center space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      Current Raised
+                    </p>
+                    <p className="text-2xl font-bold text-secondary">
+                      {project.stats.raised.toLocaleString()}
+                    </p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {project.sale.baseToken}
+                    </p>
+                  </div>
+                  <div className="text-center space-y-2">
+                    <p className="text-sm text-muted-foreground">Price</p>
+                    <p className="text-2xl font-bold text-accent">
+                      {project.sale.priceDisplay}
+                    </p>
+                  </div>
+                  <div className="text-center space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      Participants
+                    </p>
+                    <p className="text-2xl font-bold text-primary">
+                      {project.stats.buyers.toLocaleString()}
+                    </p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      buyers
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -233,7 +263,7 @@ export default function ProjectDetailPage() {
             {project.sale.fundingStatus === "Unfunded" && (
               <TokenDepositForm
                 saleAddress={saleAddress}
-                saleTokenAddress={project.sale.saleTokenAddress || ""}
+                saleTokenAddress={project.saleTokenAddress || ""}
                 projectOwner={project.sale.projectOwner || ""}
               />
             )}

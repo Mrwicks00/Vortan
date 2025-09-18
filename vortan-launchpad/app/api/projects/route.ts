@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { projectsApi } from "@/lib/supabase/projects";
-import { createPublicClient, http, formatUnits } from "viem";
+import { createPublicClient, http, formatUnits, parseEventLogs } from "viem";
 import { somniaTestnet } from "@/lib/web3/config/chains";
 import { SALE_POOL_ABI } from "@/lib/web3/abis/sale-pool";
 import { USDC_TOKEN_ABI } from "@/lib/web3/abis/usdc-token";
@@ -262,6 +262,49 @@ async function fetchContractData(saleAddress: string) {
   }
 }
 
+async function getParticipantCount(saleAddress: string): Promise<number> {
+  try {
+    // Get the current block number to query from contract creation
+    const currentBlock = await publicClient.getBlockNumber();
+
+    // Query Bought events from the SalePool contract
+    const logs = await publicClient.getLogs({
+      address: saleAddress as `0x${string}`,
+      event: {
+        type: "event",
+        name: "Bought",
+        inputs: [
+          { name: "user", type: "address", indexed: true },
+          { name: "baseAmount", type: "uint256", indexed: false },
+          { name: "tokenAmount", type: "uint256", indexed: false },
+        ],
+      },
+      fromBlock: BigInt(0), // Query from contract creation
+      toBlock: currentBlock,
+    });
+
+    // Parse the logs to extract unique participants
+    const parsedLogs = parseEventLogs({
+      abi: SALE_POOL_ABI,
+      logs,
+      eventName: "Bought",
+    });
+
+    // Count unique participants
+    const uniqueParticipants = new Set<string>();
+    parsedLogs.forEach((log) => {
+      if (log.args.user) {
+        uniqueParticipants.add(log.args.user.toLowerCase());
+      }
+    });
+
+    return uniqueParticipants.size;
+  } catch (error) {
+    console.error("Error counting participants:", error);
+    return 0; // Return 0 if there's an error
+  }
+}
+
 export async function GET() {
   try {
     // Get all projects from Supabase
@@ -274,6 +317,11 @@ export async function GET() {
         const contractData = project.sale_address
           ? await fetchContractData(project.sale_address)
           : null;
+
+        // Fetch participant count if contract data exists
+        const participantCount = contractData
+          ? await getParticipantCount(project.sale_address)
+          : 0;
 
         return {
           saleAddress: project.sale_address || "TBD",
@@ -333,6 +381,12 @@ export async function GET() {
           projectOwner: contractData?.projectOwner || "",
           finalized: contractData?.finalized || false,
           successful: contractData?.successful || false,
+          stats: {
+            raised: contractData?.raised || 0,
+            buyers: participantCount,
+            tokensSold: contractData?.tokensSold || 0,
+            raisedPct: contractData?.raisedPct || 0,
+          },
         };
       })
     );

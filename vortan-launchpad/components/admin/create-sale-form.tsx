@@ -471,7 +471,7 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="perWalletCap">Per Wallet Cap</Label>
+              <Label htmlFor="perWalletCap">Per Wallet Cap (USDC)</Label>
               <Input
                 id="perWalletCap"
                 type="number"
@@ -484,7 +484,7 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="tierCapT1">T1 Cap</Label>
+              <Label htmlFor="tierCapT1">T1 Cap (USDC)</Label>
               <Input
                 id="tierCapT1"
                 type="number"
@@ -495,7 +495,7 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="tierCapT2">T2 Cap</Label>
+              <Label htmlFor="tierCapT2">T2 Cap (USDC)</Label>
               <Input
                 id="tierCapT2"
                 type="number"
@@ -506,7 +506,7 @@ export function CreateSaleForm({ onSubmit }: CreateSaleFormProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="tierCapT3">T3 Cap</Label>
+              <Label htmlFor="tierCapT3">T3 Cap (USDC)</Label>
               <Input
                 id="tierCapT3"
                 type="number"

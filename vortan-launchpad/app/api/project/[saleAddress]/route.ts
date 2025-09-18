@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { projectsApi } from "@/lib/supabase/projects";
-import { createPublicClient, http, formatUnits } from "viem";
+import { createPublicClient, http, formatUnits, parseEventLogs } from "viem";
 import { somniaTestnet } from "@/lib/web3/config/chains";
 import { SALE_POOL_ABI } from "@/lib/web3/abis/sale-pool";
 import { USDC_TOKEN_ABI } from "@/lib/web3/abis/usdc-token";
@@ -255,7 +255,7 @@ async function fetchContractData(saleAddress: string) {
         T3: Number(tier3CapBase) / 10 ** tokenDecimals,
       },
       raised: Number(totalRaisedBase) / 10 ** tokenDecimals,
-      tokensSold: Number(totalTokensSold) / 1e18, // Assuming 18 decimals for sale token
+      tokensSold: Number(totalTokensSold) / 1e18, // Sale tokens are 18 decimals
       raisedPct: Math.min(raisedPct, 100),
       status: saleStatus,
       finalized: finalized as boolean,
@@ -277,6 +277,49 @@ async function fetchContractData(saleAddress: string) {
   }
 }
 
+async function getParticipantCount(saleAddress: string): Promise<number> {
+  try {
+    // Get the current block number to query from contract creation
+    const currentBlock = await publicClient.getBlockNumber();
+
+    // Query Bought events from the SalePool contract
+    const logs = await publicClient.getLogs({
+      address: saleAddress as `0x${string}`,
+      event: {
+        type: "event",
+        name: "Bought",
+        inputs: [
+          { name: "user", type: "address", indexed: true },
+          { name: "baseAmount", type: "uint256", indexed: false },
+          { name: "tokenAmount", type: "uint256", indexed: false },
+        ],
+      },
+      fromBlock: BigInt(0), // Query from contract creation
+      toBlock: currentBlock,
+    });
+
+    // Parse the logs to extract unique participants
+    const parsedLogs = parseEventLogs({
+      abi: SALE_POOL_ABI,
+      logs,
+      eventName: "Bought",
+    });
+
+    // Count unique participants
+    const uniqueParticipants = new Set<string>();
+    parsedLogs.forEach((log) => {
+      if (log.args.user) {
+        uniqueParticipants.add(log.args.user.toLowerCase());
+      }
+    });
+
+    return uniqueParticipants.size;
+  } catch (error) {
+    console.error("Error counting participants:", error);
+    return 0; // Return 0 if there's an error
+  }
+}
+
 export async function GET(
   request: Request,
   { params }: { params: { saleAddress: string } }
@@ -294,9 +337,33 @@ export async function GET(
     // Fetch contract data
     const contractData = await fetchContractData(saleAddress);
 
+    // Fetch participant count
+    const participantCount = await getParticipantCount(saleAddress);
+
+    // Fetch sale token symbol
+    let saleTokenSymbol = "TOKEN";
+    try {
+      saleTokenSymbol = (await publicClient.readContract({
+        address: contractData?.saleTokenAddress as `0x${string}`,
+        abi: [
+          {
+            inputs: [],
+            name: "symbol",
+            outputs: [{ name: "", type: "string" }],
+            stateMutability: "view",
+            type: "function",
+          },
+        ],
+        functionName: "symbol",
+      })) as string;
+    } catch (error) {
+      console.error("Error fetching token symbol:", error);
+    }
+
     // Return project data with real contract data
     const projectDetail = {
       saleAddress: project.sale_address,
+      saleTokenAddress: contractData?.saleTokenAddress || "",
       meta: {
         name: project.name,
         symbol: project.symbol,
@@ -330,10 +397,11 @@ export async function GET(
         vestDuration: contractData?.vestDuration || 0,
         vestStart: contractData?.vestStart || 0,
         projectOwner: contractData?.projectOwner || "",
+        saleTokenSymbol: saleTokenSymbol,
       },
       stats: {
         raised: contractData?.raised || 0,
-        buyers: 0, // Would need to fetch from events
+        buyers: participantCount,
         tokensSold: contractData?.tokensSold || 0,
         raisedPct: contractData?.raisedPct || 0,
         status: contractData?.status || "Draft",

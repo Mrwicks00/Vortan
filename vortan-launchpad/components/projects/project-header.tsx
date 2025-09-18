@@ -1,40 +1,45 @@
-"use client"
+"use client";
 
-import Image from "next/image"
-import { Badge } from "@/components/ui/badge"
-import { ExternalLink, Twitter, MessageCircle, FileText } from "lucide-react"
+import Image from "next/image";
+import { Badge } from "@/components/ui/badge";
+import { ExternalLink, Twitter, MessageCircle, FileText } from "lucide-react";
 
 interface ProjectHeaderProps {
   project: {
-    name: string
-    symbol: string
-    bannerUrl: string
-    logoUrl: string
-    description: string
-    longDescription: string
-    website: string
+    name: string;
+    symbol: string;
+    bannerUrl: string;
+    logoUrl: string;
+    description: string;
+    longDescription: string;
+    website: string;
     socials: {
-      x: string
-      discord: string
-      medium: string
-    }
-  }
-  status: "Live" | "Upcoming" | "Ended"
+      x: string;
+      discord: string;
+      medium: string;
+    };
+  };
+  status: "Live" | "Upcoming" | "Ended";
+  fundingStatus?: "Funded" | "Unfunded";
 }
 
-export function ProjectHeader({ project, status }: ProjectHeaderProps) {
+export function ProjectHeader({
+  project,
+  status,
+  fundingStatus,
+}: ProjectHeaderProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Live":
-        return "bg-secondary/20 text-secondary border-secondary/30"
+        return "bg-secondary/20 text-secondary border-secondary/30";
       case "Upcoming":
-        return "bg-accent/20 text-accent border-accent/30"
+        return "bg-accent/20 text-accent border-accent/30";
       case "Ended":
-        return "bg-muted/20 text-muted-foreground border-muted/30"
+        return "bg-muted/20 text-muted-foreground border-muted/30";
       default:
-        return "bg-muted/20 text-muted-foreground border-muted/30"
+        return "bg-muted/20 text-muted-foreground border-muted/30";
     }
-  }
+  };
 
   return (
     <div className="glass-effect glow-border rounded-lg overflow-hidden">
@@ -46,8 +51,25 @@ export function ProjectHeader({ project, status }: ProjectHeaderProps) {
           className="object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
-        <div className="absolute top-6 right-6">
-          <Badge className={`font-medium text-lg px-4 py-2 ${getStatusColor(status)}`}>{status}</Badge>
+        <div className="absolute top-6 right-6 flex gap-2">
+          <Badge
+            className={`font-medium text-lg px-4 py-2 ${getStatusColor(
+              status
+            )}`}
+          >
+            {status}
+          </Badge>
+          {fundingStatus && (
+            <Badge
+              className={`font-bold text-lg px-4 py-2 ${
+                fundingStatus === "Funded"
+                  ? "bg-green-500/20 text-green-500 border-green-500/30"
+                  : "bg-orange-500/20 text-orange-500 border-orange-500/30"
+              }`}
+            >
+              {fundingStatus}
+            </Badge>
+          )}
         </div>
         <div className="absolute bottom-6 left-6 flex items-end space-x-4">
           <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-primary/50 bg-card">
@@ -60,9 +82,14 @@ export function ProjectHeader({ project, status }: ProjectHeaderProps) {
             />
           </div>
           <div className="pb-2">
-            <h1 className="font-heading text-3xl md:text-4xl font-bold text-white mb-2">{project.name}</h1>
+            <h1 className="font-heading text-3xl md:text-4xl font-bold text-white mb-2">
+              {project.name}
+            </h1>
             <div className="flex items-center space-x-4">
-              <Badge variant="outline" className="text-sm bg-background/50 backdrop-blur">
+              <Badge
+                variant="outline"
+                className="text-sm bg-background/50 backdrop-blur"
+              >
                 {project.symbol}
               </Badge>
               <div className="flex items-center space-x-2">
@@ -105,8 +132,10 @@ export function ProjectHeader({ project, status }: ProjectHeaderProps) {
       </div>
       <div className="p-6">
         <p className="text-muted-foreground mb-4">{project.description}</p>
-        <p className="text-sm text-muted-foreground leading-relaxed">{project.longDescription}</p>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          {project.longDescription}
+        </p>
       </div>
     </div>
-  )
+  );
 }
