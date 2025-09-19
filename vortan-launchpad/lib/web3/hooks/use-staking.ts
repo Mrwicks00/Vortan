@@ -8,6 +8,7 @@ import {
   useWaitForTransactionReceipt,
 } from "wagmi";
 import { parseEther, formatEther } from "viem";
+import { toast } from "react-toastify";
 import { CONTRACT_ADDRESSES } from "../config/addresses";
 import {
   VORT_STAKING_ABI,
@@ -200,26 +201,114 @@ export function useStaking(tokenType: "VORT" | "SOMI") {
     });
 
   // Write contract functions
-  const { writeContract: stake, isPending: isStaking } = useWriteContract();
-  const { writeContract: unstake, isPending: isUnstaking } = useWriteContract();
-  const { writeContract: claimRewards, isPending: isClaiming } =
-    useWriteContract();
+  const {
+    writeContract: stake,
+    isPending: isStaking,
+    data: stakeHash,
+  } = useWriteContract();
+  const {
+    writeContract: unstake,
+    isPending: isUnstaking,
+    data: unstakeHash,
+  } = useWriteContract();
+  const {
+    writeContract: claimRewards,
+    isPending: isClaiming,
+    data: claimHash,
+  } = useWriteContract();
+  const {
+    writeContract: approve,
+    isPending: isApprovePending,
+    data: approveHash,
+  } = useWriteContract();
 
-  // Transaction receipts
+  // Transaction receipts with proper hash management
   const { isLoading: isStakePending, isSuccess: isStakeSuccess } =
     useWaitForTransactionReceipt({
-      hash: undefined,
+      hash: stakeHash,
     });
+
+  // Track if we've already handled the stake success
+  const [stakeHandled, setStakeHandled] = useState<string | null>(null);
+
+  // Handle stake transaction success/failure
+  useEffect(() => {
+    if (stakeHash && isStakeSuccess && stakeHandled !== stakeHash) {
+      toast.success("Tokens staked successfully!");
+      setStakeHandled(stakeHash);
+      refetchUserPositions();
+      refetchUserRewards();
+      refetchUserPoints();
+    }
+  }, [
+    stakeHash,
+    isStakeSuccess,
+    stakeHandled,
+    refetchUserPositions,
+    refetchUserRewards,
+    refetchUserPoints,
+  ]);
 
   const { isLoading: isUnstakePending, isSuccess: isUnstakeSuccess } =
     useWaitForTransactionReceipt({
-      hash: undefined,
+      hash: unstakeHash,
     });
+
+  // Track if we've already handled the unstake success
+  const [unstakeHandled, setUnstakeHandled] = useState<string | null>(null);
+
+  // Handle unstake transaction success/failure
+  useEffect(() => {
+    if (unstakeHash && isUnstakeSuccess && unstakeHandled !== unstakeHash) {
+      toast.success("Tokens unstaked successfully!");
+      setUnstakeHandled(unstakeHash);
+      refetchUserPositions();
+      refetchUserRewards();
+      refetchUserPoints();
+    }
+  }, [
+    unstakeHash,
+    isUnstakeSuccess,
+    unstakeHandled,
+    refetchUserPositions,
+    refetchUserRewards,
+    refetchUserPoints,
+  ]);
 
   const { isLoading: isClaimPending, isSuccess: isClaimSuccess } =
     useWaitForTransactionReceipt({
-      hash: undefined,
+      hash: claimHash,
     });
+
+  // Track if we've already handled the claim success
+  const [claimHandled, setClaimHandled] = useState<string | null>(null);
+
+  // Handle claim transaction success/failure
+  useEffect(() => {
+    if (claimHash && isClaimSuccess && claimHandled !== claimHash) {
+      toast.success("Rewards claimed successfully!");
+      setClaimHandled(claimHash);
+      refetchUserPositions();
+      refetchUserRewards();
+    }
+  }, [claimHash, isClaimSuccess, claimHandled, refetchUserPositions, refetchUserRewards]);
+
+  const { isLoading: isApproveTxLoading, isSuccess: isApproveSuccess } =
+    useWaitForTransactionReceipt({
+      hash: approveHash,
+    });
+
+  // Track if we've already handled the approval success
+  const [approvalHandled, setApprovalHandled] = useState<string | null>(null);
+
+  // Handle approve transaction success/failure
+  useEffect(() => {
+    if (approveHash && isApproveSuccess && approvalHandled !== approveHash) {
+      toast.success("Token approval successful!");
+      setApprovalHandled(approveHash);
+      // Allowance will be automatically refetched by the useReadContract hook
+    }
+  }, [approveHash, isApproveSuccess, approvalHandled]);
 
   // Stake tokens
   const stakeTokens = useCallback(
@@ -242,8 +331,14 @@ export function useStaking(tokenType: "VORT" | "SOMI") {
           functionName: "stake",
           args: [amountWei, BigInt(lockDays)],
         });
+
+        toast.loading("Staking tokens...", { toastId: "stake-loading" });
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to stake tokens");
+        toast.dismiss("stake-loading");
+        toast.error(
+          err instanceof Error ? err.message : "Failed to stake tokens"
+        );
       } finally {
         setIsLoading(false);
       }
@@ -271,8 +366,14 @@ export function useStaking(tokenType: "VORT" | "SOMI") {
           functionName: "unstake",
           args: [amountWei],
         });
+
+        toast.loading("Unstaking tokens...", { toastId: "unstake-loading" });
       } catch (err) {
         setError(
+          err instanceof Error ? err.message : "Failed to unstake tokens"
+        );
+        toast.dismiss("unstake-loading");
+        toast.error(
           err instanceof Error ? err.message : "Failed to unstake tokens"
         );
       } finally {
@@ -299,8 +400,14 @@ export function useStaking(tokenType: "VORT" | "SOMI") {
         functionName: "claim",
         args: [],
       });
+
+      toast.loading("Claiming rewards...", { toastId: "claim-loading" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to claim rewards");
+      toast.dismiss("claim-loading");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to claim rewards"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -462,8 +569,6 @@ export function useStaking(tokenType: "VORT" | "SOMI") {
   }, [tokenBalance, tokenType, tokenAddress, address]);
 
   // Approve tokens
-  const { writeContract, data: approveHash } = useWriteContract();
-
   const approveTokens = useCallback(
     async (amount: string) => {
       if (!address) throw new Error("Please connect your wallet");
@@ -471,25 +576,25 @@ export function useStaking(tokenType: "VORT" | "SOMI") {
       try {
         const amountWei = parseEther(amount);
 
-        await writeContract({
+        await approve({
           address: tokenAddress as `0x${string}`,
           abi: tokenABI,
           functionName: "approve",
           args: [contractAddress, amountWei],
         });
+
+        toast.loading("Approving tokens...", { toastId: "approve-loading" });
       } catch (error) {
         console.error(`[${tokenType}] Failed to approve tokens:`, error);
+        toast.dismiss("approve-loading");
+        toast.error(
+          error instanceof Error ? error.message : "Failed to approve tokens"
+        );
         throw error;
       }
     },
-    [address, contractAddress, tokenAddress, writeContract]
+    [address, contractAddress, tokenAddress, approve]
   );
-
-  // Wait for approval transaction
-  const { isLoading: isApprovePending, isSuccess: isApproveSuccess } =
-    useWaitForTransactionReceipt({
-      hash: approveHash,
-    });
 
   return {
     // Data

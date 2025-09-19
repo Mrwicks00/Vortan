@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   useAccount,
   useWriteContract,
@@ -77,25 +77,46 @@ export function SalePanel({
   const { userInfo, refetch: refetchUserInfo } = useSalePoolUser(saleAddress);
 
   const [amount, setAmount] = useState("");
-  const [approveTxHash, setApproveTxHash] = useState<
-    `0x${string}` | undefined
-  >();
-  const [buyTxHash, setBuyTxHash] = useState<`0x${string}` | undefined>();
+  // Contract write functions with proper hash management
+  const {
+    writeContract: writeApprove,
+    isPending: isApprovePending,
+    data: approveHash,
+  } = useWriteContract();
+  const {
+    writeContract: writeBuy,
+    isPending: isBuyPending,
+    data: buyHash,
+  } = useWriteContract();
 
-  // Contract write functions
-  const { writeContract: writeApprove, isPending: isApprovePending } =
-    useWriteContract();
-  const { writeContract: writeBuy, isPending: isBuyPending } =
-    useWriteContract();
+  // Transaction receipts with proper hash management
+  const { isLoading: isApproveTxLoading, isSuccess: isApproveSuccess } =
+    useWaitForTransactionReceipt({
+      hash: approveHash,
+    });
 
-  // Transaction receipts
-  const { isLoading: isApproveTxLoading } = useWaitForTransactionReceipt({
-    hash: approveTxHash,
-  });
+  const { isLoading: isBuyTxLoading, isSuccess: isBuySuccess } =
+    useWaitForTransactionReceipt({
+      hash: buyHash,
+    });
 
-  const { isLoading: isBuyTxLoading } = useWaitForTransactionReceipt({
-    hash: buyTxHash,
-  });
+  // Handle approval transaction success
+  useEffect(() => {
+    if (approveHash && isApproveSuccess) {
+      toast.success("Token approval successful!");
+      refetchAllowance();
+    }
+  }, [approveHash, isApproveSuccess, refetchAllowance]);
+
+  // Handle buy transaction success
+  useEffect(() => {
+    if (buyHash && isBuySuccess) {
+      toast.success("Tokens purchased successfully!");
+      setAmount("");
+      refetchUserInfo();
+      refetchAllowance();
+    }
+  }, [buyHash, isBuySuccess, refetchUserInfo, refetchAllowance]);
 
   // Determine base token type and get appropriate ABI and decimals
   const getBaseTokenInfo = (baseTokenSymbol: string) => {
@@ -209,8 +230,10 @@ export function SalePanel({
     }
 
     try {
-      toast.info(`Approving ${baseTokenInfo.tokenType}...`);
-      writeApprove({
+      toast.loading(`Approving ${baseTokenInfo.tokenType}...`, {
+        toastId: "approve-loading",
+      });
+      await writeApprove({
         address: baseTokenAddress as `0x${string}`,
         abi: baseTokenInfo.abi,
         functionName: "approve",
@@ -219,9 +242,9 @@ export function SalePanel({
           parseUnits(amount, baseTokenInfo.decimals),
         ],
       });
-      toast.success(`${baseTokenInfo.tokenType} approved successfully!`);
-      refetchAllowance();
+      // Success toast and data refresh handled by useEffect
     } catch (error) {
+      toast.dismiss("approve-loading");
       toast.error(
         `Approval failed: ${
           error instanceof Error ? error.message : "Unknown error"
@@ -263,18 +286,16 @@ export function SalePanel({
     }
 
     try {
-      toast.info("Purchasing tokens...");
-      writeBuy({
+      toast.loading("Purchasing tokens...", { toastId: "buy-loading" });
+      await writeBuy({
         address: saleAddress as `0x${string}`,
         abi: SALE_POOL_ABI,
         functionName: "buy",
         args: [parseUnits(amount, baseTokenInfo.decimals)],
       });
-      toast.success("Tokens purchased successfully!");
-      setAmount("");
-      refetchUserInfo();
-      refetchAllowance();
+      // Success toast and data refresh handled by useEffect
     } catch (error) {
+      toast.dismiss("buy-loading");
       toast.error(
         `Purchase failed: ${
           error instanceof Error ? error.message : "Unknown error"

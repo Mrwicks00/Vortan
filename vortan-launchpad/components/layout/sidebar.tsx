@@ -13,6 +13,7 @@ import {
   BarChart3,
   Settings,
   Vote,
+  Droplets,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -21,9 +22,10 @@ const navigation = [
   { name: "Home", href: "/", icon: Home },
   { name: "Projects", href: "/projects", icon: Rocket },
   { name: "Staking", href: "/staking", icon: Coins },
+  { name: "Faucet", href: "/faucet", icon: Droplets },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
-  { name: "Admin", href: "/admin", icon: Settings },
   { name: "Governance", href: "/governance", icon: Vote },
+  { name: "Admin", href: "/admin", icon: Settings },
 ];
 
 export function Sidebar() {

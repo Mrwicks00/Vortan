@@ -29,9 +29,9 @@ contract VortanFaucet {
         require(!hasClaimed[msg.sender], "Already claimed");
 
         // Transfer tokens to user (must be pre-funded)
-        uint256 vortAmount = 1000 * 10 ** 18; // 1000 VORT
-        uint256 somiAmount = 500 * 10 ** 18; // 500 SOMI
-        uint256 usdcAmount = 100 * 10 ** 6; // 100 USDC
+        uint256 vortAmount = 5000 * 10 ** 18; // 5000 VORT
+        uint256 somiAmount = 5000 * 10 ** 18; // 5000 SOMI
+        uint256 usdcAmount = 4000 * 10 ** 6; // 4000 USDC
 
         // Check if faucet has enough tokens
         require(

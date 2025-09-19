@@ -151,29 +151,13 @@ export function StakeCard({
     e.stopPropagation();
     if (!amount || !onApprove) return;
 
-    const toastId = toast.loading(`Approving ${amount} ${tokenName}...`, {
-      position: "top-right",
-    });
-
     try {
       setIsLoading(true);
       await onApprove(amount);
-
-      toast.update(toastId, {
-        render: `Approval transaction submitted for ${amount} ${tokenName}. Please wait for confirmation.`,
-        type: "info",
-        isLoading: true,
-        autoClose: 5000,
-      });
+      // Toast notifications handled by hook
     } catch (error) {
       console.error("Error approving tokens:", error);
-      toast.update(toastId, {
-        render:
-          error instanceof Error ? error.message : "Failed to approve tokens",
-        type: "error",
-        isLoading: false,
-        autoClose: 5000,
-      });
+      // Error toast handled by hook
       setIsLoading(false);
     }
   };
@@ -186,13 +170,7 @@ export function StakeCard({
         try {
           const newAllowance = await onCheckAllowance();
           setAllowance(newAllowance);
-          toast.success(
-            `Successfully approved ${amount} ${tokenName} for staking!`,
-            {
-              position: "top-right",
-              autoClose: 5000,
-            }
-          );
+          // Toast notification is handled by the hook
         } catch (error) {
           console.error("Error refreshing allowance:", error);
         }
@@ -200,43 +178,24 @@ export function StakeCard({
       refreshAllowance();
       setIsLoading(false);
     }
-  }, [isApproveSuccess, onCheckAllowance, amount, tokenName]);
+  }, [isApproveSuccess, onCheckAllowance]);
 
   const handleStake = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (amount && lockPeriod && onStake) {
-      const toastId = toast.loading(
-        `Staking ${amount} ${tokenName} for ${lockPeriod} days...`,
-        {
-          position: "top-right",
-        }
-      );
-
       setIsLoading(true);
       try {
         await onStake(amount, Number.parseInt(lockPeriod));
 
-        toast.update(toastId, {
-          render: `Successfully staked ${amount} ${tokenName} for ${lockPeriod} days!`,
-          type: "success",
-          isLoading: false,
-          autoClose: 5000,
-        });
-
+        // Clear form on success (toast handled by hook)
         setAmount("");
         setLockPeriod("");
         setIsApproved(false);
         if (onRefresh) onRefresh();
       } catch (error) {
         console.error("Error staking tokens:", error);
-        toast.update(toastId, {
-          render:
-            error instanceof Error ? error.message : "Failed to stake tokens",
-          type: "error",
-          isLoading: false,
-          autoClose: 5000,
-        });
+        // Error toast handled by hook
       } finally {
         setIsLoading(false);
       }
@@ -248,35 +207,17 @@ export function StakeCard({
     e.stopPropagation();
     if (onUnstake && tokenData.positions[positionIndex]) {
       const position = tokenData.positions[positionIndex];
-      const toastId = toast.loading(
-        `Unstaking ${position.amount} ${tokenName}...`,
-        {
-          position: "top-right",
-        }
-      );
 
       setIsLoading(true);
       try {
         // Use the actual Web3 function passed from parent
         await onUnstake(position.amount);
 
-        toast.update(toastId, {
-          render: `Successfully unstaked ${position.amount} ${tokenName}!`,
-          type: "success",
-          isLoading: false,
-          autoClose: 5000,
-        });
-
+        // Refresh data on success (toast handled by hook)
         if (onRefresh) onRefresh();
       } catch (error) {
         console.error("Error unstaking tokens:", error);
-        toast.update(toastId, {
-          render:
-            error instanceof Error ? error.message : "Failed to unstake tokens",
-          type: "error",
-          isLoading: false,
-          autoClose: 5000,
-        });
+        // Error toast handled by hook
       } finally {
         setIsLoading(false);
       }
@@ -287,35 +228,16 @@ export function StakeCard({
     e.preventDefault();
     e.stopPropagation();
     if (onClaim) {
-      const toastId = toast.loading(
-        `Claiming ${tokenData.pending} ${tokenName} rewards...`,
-        {
-          position: "top-right",
-        }
-      );
-
       setIsLoading(true);
       try {
         // Use the actual Web3 function passed from parent
         await onClaim();
 
-        toast.update(toastId, {
-          render: `Successfully claimed ${tokenData.pending} ${tokenName} rewards!`,
-          type: "success",
-          isLoading: false,
-          autoClose: 5000,
-        });
-
+        // Refresh data on success (toast handled by hook)
         if (onRefresh) onRefresh();
       } catch (error) {
         console.error("Error claiming rewards:", error);
-        toast.update(toastId, {
-          render:
-            error instanceof Error ? error.message : "Failed to claim rewards",
-          type: "error",
-          isLoading: false,
-          autoClose: 5000,
-        });
+        // Error toast handled by hook
       } finally {
         setIsLoading(false);
       }

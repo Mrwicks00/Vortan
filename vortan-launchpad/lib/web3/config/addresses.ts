@@ -12,11 +12,11 @@ export const CONTRACT_ADDRESSES = {
   // Other Contracts
   TIER_AGGREGATOR: "0xDf1499a95cE0BC67390103293178df03C332AaA1",
   SALE_FACTORY: "0x8d2c60f1A979975CfaD46b1B9624F481bD757c65",
-  FAUCET: "0xA939e5f884f46a281Eac2c438a7337b890644b8C",
+  FAUCET: "0x7510cf64c770cb7ba035fE5115699BcB72987b3A",
   GOVERNOR: "0xb59E4c855a8E142e389bB535962622B42955b9BC",
 } as const;
 
-// Network configuration - Only Somnia Testnet
+
 export const NETWORKS = {
   SOMNIA_TESTNET: {
     id: 50312, // Correct Somnia testnet chain ID

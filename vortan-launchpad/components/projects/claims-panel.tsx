@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   useAccount,
   useWriteContract,
@@ -31,23 +31,46 @@ export function ClaimsPanel({ saleAddress, sale }: ClaimsPanelProps) {
   const { userInfo, isLoading: isUserInfoLoading } =
     useSalePoolUser(saleAddress);
 
-  // Contract write functions
-  const { writeContract: writeClaimTGE, isPending: isClaimTGEPending } =
-    useWriteContract();
-  const { writeContract: writeClaimVested, isPending: isClaimVestedPending } =
-    useWriteContract();
+  // Contract write functions with proper hash management
+  const {
+    writeContract: writeClaimTGE,
+    isPending: isClaimTGEPending,
+    data: tgeHash,
+  } = useWriteContract();
+  const {
+    writeContract: writeClaimVested,
+    isPending: isClaimVestedPending,
+    data: vestedHash,
+  } = useWriteContract();
 
-  // Transaction receipts
-  const [tgeTxHash, setTgeTxHash] = useState<`0x${string}` | undefined>();
-  const [vestedTxHash, setVestedTxHash] = useState<`0x${string}` | undefined>();
+  // Transaction receipts with proper hash management
+  const { isLoading: isTgeTxLoading, isSuccess: isTgeSuccess } =
+    useWaitForTransactionReceipt({
+      hash: tgeHash,
+    });
 
-  const { isLoading: isTgeTxLoading } = useWaitForTransactionReceipt({
-    hash: tgeTxHash,
-  });
+  const { isLoading: isVestedTxLoading, isSuccess: isVestedSuccess } =
+    useWaitForTransactionReceipt({
+      hash: vestedHash,
+    });
 
-  const { isLoading: isVestedTxLoading } = useWaitForTransactionReceipt({
-    hash: vestedTxHash,
-  });
+  // Handle TGE claim transaction success
+  useEffect(() => {
+    if (tgeHash && isTgeSuccess) {
+      toast.success("TGE tokens claimed successfully!");
+      // Refresh user data
+      window.location.reload(); // Simple refresh for now
+    }
+  }, [tgeHash, isTgeSuccess]);
+
+  // Handle vested claim transaction success
+  useEffect(() => {
+    if (vestedHash && isVestedSuccess) {
+      toast.success("Vested tokens claimed successfully!");
+      // Refresh user data
+      window.location.reload(); // Simple refresh for now
+    }
+  }, [vestedHash, isVestedSuccess]);
 
   // Get user purchase data from contract
   const userPurchased = userInfo ? parseFloat(userInfo.purchasedTokens) : 0;
@@ -81,14 +104,15 @@ export function ClaimsPanel({ saleAddress, sale }: ClaimsPanelProps) {
     }
 
     try {
-      toast.info("Claiming TGE tokens...");
-      writeClaimTGE({
+      toast.loading("Claiming TGE tokens...", { toastId: "claim-tge-loading" });
+      await writeClaimTGE({
         address: saleAddress as `0x${string}`,
         abi: SALE_POOL_ABI,
         functionName: "claimTGE",
       });
-      toast.success("TGE tokens claimed successfully!");
+      // Success toast and data refresh handled by useEffect
     } catch (error) {
+      toast.dismiss("claim-tge-loading");
       toast.error(
         `Failed to claim TGE: ${
           error instanceof Error ? error.message : "Unknown error"
@@ -104,14 +128,17 @@ export function ClaimsPanel({ saleAddress, sale }: ClaimsPanelProps) {
     }
 
     try {
-      toast.info("Claiming vested tokens...");
-      writeClaimVested({
+      toast.loading("Claiming vested tokens...", {
+        toastId: "claim-vested-loading",
+      });
+      await writeClaimVested({
         address: saleAddress as `0x${string}`,
         abi: SALE_POOL_ABI,
         functionName: "claimVested",
       });
-      toast.success("Vested tokens claimed successfully!");
+      // Success toast and data refresh handled by useEffect
     } catch (error) {
+      toast.dismiss("claim-vested-loading");
       toast.error(
         `Failed to claim vested tokens: ${
           error instanceof Error ? error.message : "Unknown error"

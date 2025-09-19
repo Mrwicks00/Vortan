@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, Twitter, MessageCircle, FileText } from "lucide-react";
+import { ReactNode } from "react";
 
 interface ProjectHeaderProps {
   project: {
@@ -21,12 +22,14 @@ interface ProjectHeaderProps {
   };
   status: "Live" | "Upcoming" | "Ended";
   fundingStatus?: "Funded" | "Unfunded";
+  children?: ReactNode;
 }
 
 export function ProjectHeader({
   project,
   status,
   fundingStatus,
+  children,
 }: ProjectHeaderProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -51,25 +54,28 @@ export function ProjectHeader({
           className="object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
-        <div className="absolute top-6 right-6 flex gap-2">
-          <Badge
-            className={`font-medium text-lg px-4 py-2 ${getStatusColor(
-              status
-            )}`}
-          >
-            {status}
-          </Badge>
-          {fundingStatus && (
+        <div className="absolute top-6 right-6 flex flex-col gap-2">
+          <div className="flex gap-2">
             <Badge
-              className={`font-bold text-lg px-4 py-2 ${
-                fundingStatus === "Funded"
-                  ? "bg-green-500/20 text-green-500 border-green-500/30"
-                  : "bg-orange-500/20 text-orange-500 border-orange-500/30"
-              }`}
+              className={`font-medium text-lg px-4 py-2 ${getStatusColor(
+                status
+              )}`}
             >
-              {fundingStatus}
+              {status}
             </Badge>
-          )}
+            {fundingStatus && (
+              <Badge
+                className={`font-bold text-lg px-4 py-2 ${
+                  fundingStatus === "Funded"
+                    ? "bg-green-500/20 text-green-500 border-green-500/30"
+                    : "bg-orange-500/20 text-orange-500 border-orange-500/30"
+                }`}
+              >
+                {fundingStatus}
+              </Badge>
+            )}
+          </div>
+          {children && <div className="flex gap-2">{children}</div>}
         </div>
         <div className="absolute bottom-6 left-6 flex items-end space-x-4">
           <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-primary/50 bg-card">

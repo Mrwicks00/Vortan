@@ -2,16 +2,28 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
+import { useAccount } from "wagmi";
 import { MainLayout } from "@/components/layout/main-layout";
 import { ProjectHeader } from "@/components/projects/project-header";
 import { SalePanel } from "@/components/projects/sale-panel";
 import { ClaimsPanel } from "@/components/projects/claims-panel";
 import { UserTierDisplay } from "@/components/projects/user-tier-display";
 import { TokenDepositForm } from "@/components/admin/token-deposit-form";
+import { AdminSaleModal } from "@/components/projects/admin-sale-modal";
+import { RefundModal } from "@/components/projects/refund-modal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, FileText, Shield } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  AlertTriangle,
+  FileText,
+  Shield,
+  Settings,
+  RotateCcw,
+} from "lucide-react";
+import { useSalePoolAdmin } from "@/lib/web3/hooks/use-sale-pool-admin";
+import { useSalePoolRefund } from "@/lib/web3/hooks/use-sale-pool-refund";
 
 interface ProjectDetail {
   saleAddress: string;
@@ -61,9 +73,18 @@ interface ProjectDetail {
 export default function ProjectDetailPage() {
   const params = useParams();
   const saleAddress = params.saleAddress as string;
+  const { address, isConnected } = useAccount();
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Modal states
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [showRefundModal, setShowRefundModal] = useState(false);
+
+  // Sale pool admin and refund hooks
+  const { saleStats, saleStatus } = useSalePoolAdmin(saleAddress);
+  const { refundInfo } = useSalePoolRefund(saleAddress);
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -97,6 +118,21 @@ export default function ProjectDetailPage() {
     if (now > end) return "Ended";
     return "Live";
   };
+
+  // Determine if user is project owner
+  const isProjectOwner =
+    project?.sale?.projectOwner?.toLowerCase() === address?.toLowerCase();
+
+  // Determine when to show admin button
+  const showAdminButton =
+    isProjectOwner &&
+    isConnected &&
+    ((saleStatus?.status === "Ended" && !saleStats?.finalized) ||
+      (saleStats?.finalized && saleStats.successful));
+
+  // Determine when to show refund button
+  const showRefundButton =
+    isConnected && refundInfo?.canRefund && !refundInfo?.refunded;
 
   if (loading) {
     return (
@@ -149,7 +185,27 @@ export default function ProjectDetailPage() {
           project={project.meta}
           status={status}
           fundingStatus={project.sale.fundingStatus}
-        />
+        >
+          {showAdminButton && (
+            <Button
+              onClick={() => setShowAdminModal(true)}
+              className="bg-primary hover:bg-primary/80"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Admin
+            </Button>
+          )}
+          {showRefundButton && (
+            <Button
+              onClick={() => setShowRefundModal(true)}
+              variant="outline"
+              className="border-orange-400 text-orange-400 hover:bg-orange-400/10"
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Refund
+            </Button>
+          )}
+        </ProjectHeader>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
@@ -277,6 +333,19 @@ export default function ProjectDetailPage() {
             <ClaimsPanel saleAddress={saleAddress} sale={project.sale} />
           </div>
         </div>
+
+        {/* Modals */}
+        <AdminSaleModal
+          saleAddress={saleAddress}
+          isOpen={showAdminModal}
+          onClose={() => setShowAdminModal(false)}
+        />
+
+        <RefundModal
+          saleAddress={saleAddress}
+          isOpen={showRefundModal}
+          onClose={() => setShowRefundModal(false)}
+        />
       </div>
     </MainLayout>
   );
