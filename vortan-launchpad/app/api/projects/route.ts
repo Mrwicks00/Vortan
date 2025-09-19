@@ -264,20 +264,7 @@ async function fetchContractData(saleAddress: string) {
 
 async function getParticipantCount(saleAddress: string): Promise<number> {
   try {
-    console.log(`🔍 [DEBUG] Fetching participants for sale: ${saleAddress}`);
-
-    // Get the current block number to query from contract creation
-    const currentBlock = await publicClient.getBlockNumber();
-    console.log(`📊 [DEBUG] Current block: ${currentBlock}`);
-
-    // Try a smaller block range first to avoid RPC limits
-    const recentBlocks = BigInt(5000); // Last 5000 blocks
-    const startBlock =
-      currentBlock > recentBlocks ? currentBlock - recentBlocks : BigInt(0);
-
-    console.log(`🚀 [DEBUG] Querying blocks ${startBlock} to ${currentBlock}`);
-
-    // Query Bought events from the SalePool contract
+    // Get all Bought events from the contract
     const logs = await publicClient.getLogs({
       address: saleAddress as `0x${string}`,
       event: {
@@ -289,37 +276,28 @@ async function getParticipantCount(saleAddress: string): Promise<number> {
           { name: "tokenAmount", type: "uint256", indexed: false },
         ],
       },
-      fromBlock: startBlock, // Use recent blocks first
-      toBlock: currentBlock,
+      fromBlock: "earliest",
+      toBlock: "latest",
     });
 
-    console.log(`📝 [DEBUG] Found ${logs.length} raw logs`);
-
-    // Parse the logs to extract unique participants
+    // Count unique participants
+    const uniqueParticipants = new Set<string>();
     const parsedLogs = parseEventLogs({
       abi: SALE_POOL_ABI,
       logs,
       eventName: "Bought",
     });
 
-    console.log(`🔧 [DEBUG] Parsed ${parsedLogs.length} Bought events`);
-
-    // Count unique participants
-    const uniqueParticipants = new Set<string>();
-    parsedLogs.forEach((log, index) => {
-      console.log(`👤 [DEBUG] Event ${index}: user=${log.args.user}`);
+    parsedLogs.forEach((log) => {
       if (log.args.user) {
         uniqueParticipants.add(log.args.user.toLowerCase());
       }
     });
 
-    console.log(
-      `🎉 [DEBUG] Total unique participants: ${uniqueParticipants.size}`
-    );
     return uniqueParticipants.size;
   } catch (error) {
-    console.error("❌ [DEBUG] Error counting participants:", error);
-    return 0; // Return 0 if there's an error
+    console.error("Error counting participants:", error);
+    return 0;
   }
 }
 

@@ -279,138 +279,40 @@ async function fetchContractData(saleAddress: string) {
 
 async function getParticipantCount(saleAddress: string): Promise<number> {
   try {
-    console.log(`🔍 Fetching participants for sale: ${saleAddress}`);
-
-    // Get the current block number to query from contract creation
-    const currentBlock = await publicClient.getBlockNumber();
-    console.log(`📊 Current block: ${currentBlock}`);
-
-    // Use chunked fetching to handle potential RPC block range limitations
-    const CHUNK_SIZE = 500; // 500 blocks per chunk
-    const uniqueParticipants = new Set<string>();
-
-    // Start from a recent block range first (more likely to have participants)
-    const recentBlocks = BigInt(10000); // Last 10,000 blocks
-    const startBlock =
-      currentBlock > recentBlocks ? currentBlock - recentBlocks : BigInt(0);
-
-    console.log(
-      `🚀 Starting participant search from block ${startBlock} to ${currentBlock}`
-    );
-
-    // Try recent blocks first
-    let allLogs: any[] = [];
-
-    for (
-      let fromBlock = startBlock;
-      fromBlock < currentBlock;
-      fromBlock += BigInt(CHUNK_SIZE)
-    ) {
-      const toBlock =
-        fromBlock + BigInt(CHUNK_SIZE) > currentBlock
-          ? currentBlock
-          : fromBlock + BigInt(CHUNK_SIZE);
-
-      try {
-        console.log(`📦 Fetching chunk: blocks ${fromBlock} to ${toBlock}`);
-
-        const chunkLogs = await publicClient.getLogs({
-          address: saleAddress as `0x${string}`,
-          event: {
-            type: "event",
-            name: "Bought",
-            inputs: [
-              { name: "user", type: "address", indexed: true },
-              { name: "baseAmount", type: "uint256", indexed: false },
-              { name: "tokenAmount", type: "uint256", indexed: false },
-            ],
-          },
-          fromBlock,
-          toBlock,
-        });
-
-        allLogs.push(...chunkLogs);
-        console.log(`✅ Chunk success: found ${chunkLogs.length} events`);
-      } catch (chunkError) {
-        console.warn(
-          `⚠️ Chunk failed for blocks ${fromBlock}-${toBlock}:`,
-          chunkError
-        );
-        // Continue with next chunk
-      }
-    }
-
-    // If no events found in recent blocks, try from block 0 with smaller chunks
-    if (allLogs.length === 0 && startBlock > BigInt(0)) {
-      console.log(
-        `🔄 No participants found in recent blocks, searching from block 0...`
-      );
-
-      for (
-        let fromBlock = BigInt(0);
-        fromBlock < startBlock;
-        fromBlock += BigInt(200)
-      ) {
-        const toBlock =
-          fromBlock + BigInt(200) > startBlock
-            ? startBlock
-            : fromBlock + BigInt(200);
-
-        try {
-          const chunkLogs = await publicClient.getLogs({
-            address: saleAddress as `0x${string}`,
-            event: {
-              type: "event",
-              name: "Bought",
-              inputs: [
-                { name: "user", type: "address", indexed: true },
-                { name: "baseAmount", type: "uint256", indexed: false },
-                { name: "tokenAmount", type: "uint256", indexed: false },
-              ],
-            },
-            fromBlock,
-            toBlock,
-          });
-
-          allLogs.push(...chunkLogs);
-
-          // Stop early if we found participants
-          if (chunkLogs.length > 0) {
-            console.log(
-              `🎯 Found participants in early blocks, stopping search`
-            );
-            break;
-          }
-        } catch (chunkError) {
-          console.warn(
-            `⚠️ Early chunk failed for blocks ${fromBlock}-${toBlock}:`,
-            chunkError
-          );
-        }
-      }
-    }
-
-    // Parse the logs to extract unique participants
-    const parsedLogs = parseEventLogs({
-      abi: SALE_POOL_ABI,
-      logs: allLogs,
-      eventName: "Bought",
+    // Get all Bought events from the contract
+    const logs = await publicClient.getLogs({
+      address: saleAddress as `0x${string}`,
+      event: {
+        type: "event",
+        name: "Bought",
+        inputs: [
+          { name: "user", type: "address", indexed: true },
+          { name: "baseAmount", type: "uint256", indexed: false },
+          { name: "tokenAmount", type: "uint256", indexed: false },
+        ],
+      },
+      fromBlock: "earliest",
+      toBlock: "latest",
     });
 
     // Count unique participants
+    const uniqueParticipants = new Set<string>();
+    const parsedLogs = parseEventLogs({
+      abi: SALE_POOL_ABI,
+      logs,
+      eventName: "Bought",
+    });
+
     parsedLogs.forEach((log) => {
       if (log.args.user) {
         uniqueParticipants.add(log.args.user.toLowerCase());
       }
     });
 
-    console.log(
-      `🎉 Total participants found: ${uniqueParticipants.size} from ${allLogs.length} events`
-    );
     return uniqueParticipants.size;
   } catch (error) {
-    console.error("❌ Error counting participants:", error);
-    return 0; // Return 0 if there's an error
+    console.error("Error counting participants:", error);
+    return 0;
   }
 }
 
