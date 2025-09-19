@@ -1,17 +1,17 @@
-# Vortan - Advanced Token Launchpad Platform
+# Vortan - Advanced IDO Platform
 
-A comprehensive token launchpad built on blockchain technology with advanced staking, governance, and project management capabilities.
+A comprehensive decentralized IDO platform built on the Somnia blockchain with advanced staking, governance, and project management capabilities.
 
 ## 🚀 Overview
 
-Vortan is a comprehensive token launchpad platform that combines cutting-edge DeFi features with a modern user interface. The platform enables users to discover, participate in, and manage token sales while earning rewards through dual staking mechanisms.
+Vortan solves the problem of fragmented IDO platforms by providing a unified IDO platform with integrated staking rewards and governance voting on the Somnia blockchain. The platform enables users to discover, participate in, and manage token sales while earning rewards through dual staking mechanisms.
 
 ## ✨ Key Features
 
-### 🎯 Token Launchpad
+### 🎯 IDO Platform
 
-- **SaleFactory**: Automated creation and management of token sales
-- **SalePool**: Individual sale contracts with tier-based allocation
+- **SaleFactory**: Automated creation and management of IDO sales
+- **SalePool**: Individual IDO contracts with tier-based allocation
 - **Tier System**: Multi-tier allocation based on staking participation
 - **Vesting**: Configurable token vesting schedules with TGE releases
 
@@ -39,13 +39,13 @@ Vortan is a comprehensive token launchpad platform that combines cutting-edge De
 ### Smart Contracts
 
 - **DualStaking.sol**: Core staking contract with reward distribution
-- **SaleFactory.sol**: Factory contract for creating new token sales
-- **SalePool.sol**: Individual sale implementation with tier logic
+- **SaleFactory.sol**: Factory contract for creating new IDO sales
+- **SalePool.sol**: Individual IDO implementation with tier logic
 - **TierAggregator.sol**: Tier calculation based on dual staking
 - **LightGovernor.sol**: Governance implementation
 - **VortanToken.sol**: Main platform token (VORT) with voting capabilities
 - **SOMI.sol**: Secondary staking token
-- **USDC.sol**: Base currency for token sales
+- **USDC.sol**: Base currency for IDO sales
 - **VortanFaucet.sol**: Testnet token distribution
 
 ### Frontend
@@ -54,8 +54,9 @@ Vortan is a comprehensive token launchpad platform that combines cutting-edge De
 - **TypeScript**: Full type safety and development experience
 - **Tailwind CSS**: Utility-first CSS framework with custom styling
 - **Wagmi + RainbowKit**: Web3 wallet integration
-- **Prisma**: Database ORM for project data
+- **Supabase**: Database and backend services for project data
 - **Radix UI**: Accessible component library
+- **React Toastify**: Toast notifications for user feedback
 
 ## 🚀 Getting Started
 
@@ -87,16 +88,38 @@ pnpm dev
 
 ### Network Support
 
-- **Somnia Testnet**: Primary testnet for development
+- **Somnia Testnet**: Primary testnet for development (Chain ID: 50312)
 - **Local Development**: Hardhat local network
 - **Mainnet Ready**: Contracts deployable to mainnet
+
+### Contract Addresses (Somnia Testnet)
+
+```typescript
+// Deployed Contract Addresses
+const CONTRACT_ADDRESSES = {
+  // Tokens
+  VORTAN_TOKEN: "0xdEFAA5459ba8DcC24A7470DB4835C97B0fdf85fc",
+  SOMI_TOKEN: "0xc578aBA50AF13BAB8FCeAfA99c0eb0E43477cC8E",
+  USDC_TOKEN: "0xEf56Dce856AB8b1C85D7266064Da04c78927Edc4",
+
+  // Staking Contracts
+  VORT_STAKING: "0xb70E38365aD53485BA3ba8b472735c5D4140A0E0",
+  SOMI_STAKING: "0xF321b818669d56C8f11b3617429cD987c745B0D2",
+
+  // Other Contracts
+  TIER_AGGREGATOR: "0xDf1499a95cE0BC67390103293178df03C332AaA1",
+  SALE_FACTORY: "0x7b299220aAa4C29083C47dceCB495C7366591D2C",
+  FAUCET: "0x7510cf64c770cb7ba035fE5115699BcB72987b3A",
+  GOVERNOR: "0xb59E4c855a8E142e389bB535962622B42955b9BC",
+};
+```
 
 ### Environment Variables
 
 Create `.env` files in both directories with:
 
 - Private keys for deployment
-- RPC endpoints
+- RPC endpoints (https://dream-rpc.somnia.network)
 - API keys for verification
 
 ## 📚 Documentation
@@ -104,16 +127,17 @@ Create `.env` files in both directories with:
 - **Smart Contracts**: Comprehensive Solidity contracts with OpenZeppelin standards
 - **Frontend Components**: Modular React components with TypeScript
 - **API Routes**: Next.js API routes for blockchain interaction
-- **Database Schema**: Prisma schema for project and user data
+- **Database Schema**: Supabase database schema for project and user data
 
 ## 🧪 Testing
 
 ```bash
 # Smart Contract Tests
+cd Smart-Contract
 npm run test
 
-# Frontend Tests
-pnpm test
+# Test on Testnet
+npm run test:testnet
 
 # Integration Tests
 npm run test:deployment
@@ -123,6 +147,7 @@ npm run test:deployment
 
 ```bash
 # Deploy to Testnet
+cd Smart-Contract
 npm run deploy:testnet
 
 # Deploy Locally
@@ -131,6 +156,16 @@ npm run deploy:local
 # Verify Contracts
 npm run verify:config
 ```
+
+## 🔧 Faucet System
+
+The platform includes a faucet system for testing:
+
+- **VORT**: 5,000 tokens per claim
+- **SOMI**: 5,000 tokens per claim
+- **USDC**: 4,000 tokens per claim
+
+Access the faucet at `/faucet` in the application.
 
 ## 🌟 Contributing
 
@@ -146,9 +181,7 @@ MIT License - see LICENSE file for details
 
 ## 🔗 Links
 
-- **Platform**: [Vortan Launchpad](https://vortan.xyz)
-- **Documentation**: [Docs](https://docs.vortan.xyz)
-- **Discord**: [Community](https://discord.gg/vortan)
+- **Platform**: [Vortan IDO Platform](https://vortan-mocha.vercel.app/)
 
 ---
 
