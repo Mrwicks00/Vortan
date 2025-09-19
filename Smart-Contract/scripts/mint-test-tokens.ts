@@ -9,7 +9,7 @@ async function main() {
   // Get the deployed TestToken contract address
   // You can pass this as an argument: npx hardhat run scripts/mint-test-tokens.ts --network somniaTestnet -- --token-address 0xYourTokenAddress
   const TEST_TOKEN_ADDRESS =
-    process.argv[4] || "0xB4b61c373FA035A673D75D9daae70E61093ede62"; // Update this with your token address
+    process.argv[4] || "0xf94e85133f01257532DaF4cd20DAA8A983F295Cb"; // Update this with your token address
 
   if (TEST_TOKEN_ADDRESS === "0x1234567890123456789012345678901234567890") {
     console.log(

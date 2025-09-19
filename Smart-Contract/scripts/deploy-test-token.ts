@@ -8,8 +8,8 @@ async function main() {
   console.log("Deploying with account:", deployer.address);
 
   // Deploy TestToken with these parameters:
-  const tokenName = "Test Token";
-  const tokenSymbol = "TEST";
+  const tokenName = "Eden";
+  const tokenSymbol = "EDEN";
   const initialSupply = ethers.parseEther("1000000"); // 1,000,000 tokens with 18 decimals
 
   const TestToken = await ethers.getContractFactory("TestToken");

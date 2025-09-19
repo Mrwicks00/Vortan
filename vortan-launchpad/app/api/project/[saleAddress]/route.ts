@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { projectsApi } from "@/lib/supabase/projects";
-import { createPublicClient, http, formatUnits, parseEventLogs } from "viem";
+import { createPublicClient, http, formatUnits } from "viem";
 import { somniaTestnet } from "@/lib/web3/config/chains";
 import { SALE_POOL_ABI } from "@/lib/web3/abis/sale-pool";
 import { USDC_TOKEN_ABI } from "@/lib/web3/abis/usdc-token";
@@ -279,54 +279,15 @@ async function fetchContractData(saleAddress: string) {
 
 async function getParticipantCount(saleAddress: string): Promise<number> {
   try {
-    // Try to get participant count from contract function first (new contracts)
-    try {
-      const count = await publicClient.readContract({
-        address: saleAddress as `0x${string}`,
-        abi: SALE_POOL_ABI,
-        functionName: "participantCount",
-      });
-      return Number(count);
-    } catch (contractError) {
-      // Fallback to event parsing for older contracts
-      console.log(
-        "participantCount function not available, using event parsing fallback"
-      );
-    }
-
-    // Fallback: Get all Bought events from the contract
-    const logs = await publicClient.getLogs({
+    // Get participant count from contract function (new contracts only)
+    const count = await publicClient.readContract({
       address: saleAddress as `0x${string}`,
-      event: {
-        type: "event",
-        name: "Bought",
-        inputs: [
-          { name: "user", type: "address", indexed: true },
-          { name: "baseAmount", type: "uint256", indexed: false },
-          { name: "tokenAmount", type: "uint256", indexed: false },
-        ],
-      },
-      fromBlock: "earliest",
-      toBlock: "latest",
-    });
-
-    // Count unique participants
-    const uniqueParticipants = new Set<string>();
-    const parsedLogs = parseEventLogs({
       abi: SALE_POOL_ABI,
-      logs,
-      eventName: "Bought",
+      functionName: "participantCount",
     });
-
-    parsedLogs.forEach((log) => {
-      if (log.args.user) {
-        uniqueParticipants.add(log.args.user.toLowerCase());
-      }
-    });
-
-    return uniqueParticipants.size;
+    return Number(count);
   } catch (error) {
-    console.error("Error counting participants:", error);
+    // Older contracts don't have participantCount function, return 0
     return 0;
   }
 }

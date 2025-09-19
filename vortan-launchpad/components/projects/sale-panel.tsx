@@ -77,6 +77,29 @@ export function SalePanel({
   const { userInfo, refetch: refetchUserInfo } = useSalePoolUser(saleAddress);
 
   const [amount, setAmount] = useState("");
+
+  // Determine base token type and get appropriate ABI and decimals
+  const getBaseTokenInfo = (baseTokenSymbol: string) => {
+    const tokenType = baseTokenSymbol.toUpperCase() as BaseTokenType;
+    const tokenAddress = BASE_TOKEN_ADDRESSES[tokenType];
+    const decimals = BASE_TOKEN_DECIMALS[tokenType];
+    const abi = tokenType === "USDC" ? USDC_TOKEN_ABI : SOMI_TOKEN_ABI;
+
+    return { tokenType, tokenAddress, decimals, abi };
+  };
+
+  const baseTokenInfo = getBaseTokenInfo(sale.baseToken);
+  const baseTokenAddress = baseTokenInfo.tokenAddress;
+
+  // Check base token allowance
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
+    address: baseTokenAddress as `0x${string}`,
+    abi: baseTokenInfo.abi,
+    functionName: "allowance",
+    args: address ? [address, saleAddress as `0x${string}`] : undefined,
+    query: { enabled: !!address },
+  });
+
   // Contract write functions with proper hash management
   const {
     writeContract: writeApprove,
@@ -117,30 +140,6 @@ export function SalePanel({
       refetchAllowance();
     }
   }, [buyHash, isBuySuccess, refetchUserInfo, refetchAllowance]);
-
-  // Determine base token type and get appropriate ABI and decimals
-  const getBaseTokenInfo = (baseTokenSymbol: string) => {
-    const tokenType = baseTokenSymbol.toUpperCase() as BaseTokenType;
-    const tokenAddress = BASE_TOKEN_ADDRESSES[tokenType];
-    const decimals = BASE_TOKEN_DECIMALS[tokenType];
-    const abi = tokenType === "USDC" ? USDC_TOKEN_ABI : SOMI_TOKEN_ABI;
-
-    return { tokenType, tokenAddress, decimals, abi };
-  };
-
-  const baseTokenInfo = getBaseTokenInfo(sale.baseToken);
-  const baseTokenAddress = baseTokenInfo.tokenAddress;
-
-  // Check base token allowance
-  const { data: allowance, refetch: refetchAllowance } = useReadContract({
-    address: baseTokenAddress as `0x${string}`,
-    abi: baseTokenInfo.abi,
-    functionName: "allowance",
-    args: address ? [address, saleAddress as `0x${string}`] : undefined,
-    query: {
-      enabled: !!address && !!saleAddress,
-    },
-  });
 
   // Check base token balance
   const { data: balance } = useReadContract({
