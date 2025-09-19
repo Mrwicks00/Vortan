@@ -264,7 +264,22 @@ async function fetchContractData(saleAddress: string) {
 
 async function getParticipantCount(saleAddress: string): Promise<number> {
   try {
-    // Get all Bought events from the contract
+    // Try to get participant count from contract function first (new contracts)
+    try {
+      const count = await publicClient.readContract({
+        address: saleAddress as `0x${string}`,
+        abi: SALE_POOL_ABI,
+        functionName: "participantCount",
+      });
+      return Number(count);
+    } catch (contractError) {
+      // Fallback to event parsing for older contracts
+      console.log(
+        "participantCount function not available, using event parsing fallback"
+      );
+    }
+
+    // Fallback: Get all Bought events from the contract
     const logs = await publicClient.getLogs({
       address: saleAddress as `0x${string}`,
       event: {

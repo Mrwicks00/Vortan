@@ -49,6 +49,10 @@ contract SalePool is ReentrancyGuard {
     mapping(address => bool) public tgeClaimed;
     mapping(address => uint256) public vestedClaimed;
     mapping(address => bool) public refunded;
+    
+    // Participant tracking
+    uint256 public participantCount;
+    mapping(address => bool) public hasParticipated;
 
     enum SaleStatus {
         Unfunded,
@@ -179,6 +183,12 @@ contract SalePool is ReentrancyGuard {
             address(this),
             baseAmount
         );
+
+        // Track participant count
+        if (!hasParticipated[msg.sender]) {
+            participantCount++;
+            hasParticipated[msg.sender] = true;
+        }
 
         purchasedBase[msg.sender] += baseAmount;
         purchasedTokens[msg.sender] += tokensOut;
