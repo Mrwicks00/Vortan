@@ -31,16 +31,17 @@ export function Topbar() {
 
   return (
     <header className="fixed top-0 right-0 left-0 z-30 h-16 glass-effect border-b border-border">
-      <div className="flex h-full items-center justify-between px-6">
+      <div className="flex h-full items-center justify-between px-4 sm:px-6">
         <div className="flex items-center space-x-4">
-          <h1 className="font-heading text-2xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
-            Space Station Dashboard
+          <h1 className="font-heading text-lg sm:text-2xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+            <span className="hidden sm:inline">Space Station Dashboard</span>
+            <span className="sm:hidden">Dashboard</span>
           </h1>
         </div>
 
-        <div className="flex items-center space-x-4">
-          {/* Network Indicator */}
-          <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 sm:space-x-4">
+          {/* Network Indicator - Hidden on mobile */}
+          <div className="hidden sm:flex items-center space-x-2">
             <Wifi className="h-4 w-4 text-secondary" />
             <Badge
               variant={isCorrectNetwork ? "secondary" : "destructive"}
@@ -88,8 +89,10 @@ export function Topbar() {
                           onClick={openConnectModal}
                           className="bg-gradient-to-r from-primary to-secondary hover:from-primary/80 hover:to-secondary/80 transition-all duration-300 animate-glow"
                         >
-                          <Wallet className="h-4 w-4 mr-2" />
-                          Connect Wallet
+                          <Wallet className="h-4 w-4 sm:mr-2" />
+                          <span className="hidden sm:inline">
+                            Connect Wallet
+                          </span>
                         </Button>
                       );
                     }
@@ -99,9 +102,12 @@ export function Topbar() {
                         <Button
                           onClick={openChainModal}
                           variant="destructive"
-                          className="animate-pulse"
+                          className="animate-pulse text-xs sm:text-sm"
                         >
-                          Wrong network
+                          <span className="hidden sm:inline">
+                            Wrong network
+                          </span>
+                          <span className="sm:hidden">Network</span>
                         </Button>
                       );
                     }
@@ -112,17 +118,19 @@ export function Topbar() {
                           onClick={openChainModal}
                           variant="outline"
                           size="sm"
-                          className="text-xs"
+                          className="text-xs hidden sm:flex"
                         >
                           {chain.name}
                         </Button>
 
                         <Button
                           onClick={openAccountModal}
-                          className="bg-gradient-to-r from-primary to-secondary hover:from-primary/80 hover:to-secondary/80 transition-all duration-300"
+                          className="bg-gradient-to-r from-primary to-secondary hover:from-primary/80 hover:to-secondary/80 transition-all duration-300 text-xs sm:text-sm"
                         >
-                          <Wallet className="h-4 w-4 mr-2" />
-                          {account.displayName}
+                          <Wallet className="h-4 w-4 sm:mr-2" />
+                          <span className="hidden sm:inline">
+                            {account.displayName}
+                          </span>
                         </Button>
                       </div>
                     );

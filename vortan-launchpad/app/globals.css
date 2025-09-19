@@ -133,6 +133,13 @@
     background-attachment: fixed;
   }
 
+  /* Mobile optimizations */
+  @media (max-width: 768px) {
+    body {
+      background-attachment: scroll;
+    }
+  }
+
   /* Added heading font class */
   .font-heading {
     font-family: var(--font-heading);
@@ -176,6 +183,24 @@
   .bg-governance {
     background-image: url("/council-chamber.png");
   }
+
+  /* Mobile responsive utilities */
+  .mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    overflow-x: auto;
+  }
+
+  .mobile-card {
+    @apply mx-2 sm:mx-0;
+  }
+
+  .mobile-text {
+    @apply text-sm sm:text-base;
+  }
+
+  .mobile-padding {
+    @apply p-4 sm:p-6;
+  }
 }
 
 /* Added glow animation for interactive elements */
@@ -185,7 +210,8 @@
     box-shadow: 0 0 5px rgba(157, 78, 221, 0.5);
   }
   50% {
-    box-shadow: 0 0 20px rgba(157, 78, 221, 0.8), 0 0 30px rgba(0, 229, 255, 0.4);
+    box-shadow: 0 0 20px rgba(157, 78, 221, 0.8),
+      0 0 30px rgba(0, 229, 255, 0.4);
   }
 }
 
